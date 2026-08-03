@@ -28,6 +28,7 @@ import com.eous.mentor.features.auth.register.RegisterFormScreen
 import com.eous.mentor.features.auth.relogin.ReLoginScreen
 import com.eous.mentor.features.auth.splash.SplashScreen
 import com.eous.mentor.features.home.HomeViewModel
+import com.eous.mentor.features.chat.ChatViewModel
 import com.eous.mentor.features.main.MainScreen
 
 // --- Navigation Host ---
@@ -63,11 +64,16 @@ fun AuthRouter() {
             remember(activeUserId) {
                 if (activeUserId.isNotEmpty()) HomeViewModel(activeUserId) else null
             }
+    val chatViewModel =
+            remember(activeUserId) {
+                if (activeUserId.isNotEmpty()) ChatViewModel(userId = activeUserId) else null
+            }
 
     val homeState = homeViewModel?.state?.collectAsState()?.value
+    val chatState = chatViewModel?.state?.collectAsState()?.value
     val isTargetReady =
             if (targetDest == "dashboard") {
-                isInitialized && homeState != null && !homeState.isLoading
+                isInitialized && homeState != null && !homeState.isLoading && chatState != null && !chatState.isLoadingSessions
             } else {
                 isInitialized
             }
@@ -183,7 +189,8 @@ fun AuthRouter() {
                     MainScreen(
                             navController = navController,
                             userId = activeUserId,
-                            homeViewModel = homeViewModel!!
+                            homeViewModel = homeViewModel!!,
+                            chatViewModel = chatViewModel!!
                     )
                 }
             }

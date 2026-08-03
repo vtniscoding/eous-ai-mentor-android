@@ -126,6 +126,16 @@ class ChatRepositoryImpl : ChatRepository {
         }
     }
 
+    override suspend fun deleteMessage(messageId: String): Result<Unit> {
+        return try {
+            supabase.from("messages").delete { filter { eq("id", messageId) } }
+            Result.success(Unit)
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
     // ---- AI ----
 
     override suspend fun getAiResponse(

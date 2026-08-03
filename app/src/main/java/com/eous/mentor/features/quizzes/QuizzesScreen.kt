@@ -47,7 +47,6 @@ private val HeaderPurple = Color(0xFF5B29A2)
 @Composable
 fun QuizzesScreen(userId: String, onBack: () -> Unit, viewModel: QuizzesViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
-    var showCreateDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(userId) { viewModel.loadQuizzes(userId) }
 
@@ -204,7 +203,7 @@ fun QuizzesScreen(userId: String, onBack: () -> Unit, viewModel: QuizzesViewMode
             } else {
                 LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(14.dp),
-                        contentPadding = PaddingValues(bottom = 100.dp),
+                        contentPadding = PaddingValues(bottom = 24.dp),
                         modifier = Modifier.weight(1f)
                 ) {
                     items(filteredQuizzes, key = { it.id }) { quiz ->
@@ -212,99 +211,6 @@ fun QuizzesScreen(userId: String, onBack: () -> Unit, viewModel: QuizzesViewMode
                     }
                 }
             }
-        }
-
-        // ---- 5. Floating Bottom Button (Create Quizz) with 3D Solid Shadow & Hover effect ----
-        val createInteractionSource = remember { MutableInteractionSource() }
-        val isCreateHovered by createInteractionSource.collectIsHoveredAsState()
-        val isCreatePressed by createInteractionSource.collectIsPressedAsState()
-        val createScale by
-                animateFloatAsState(
-                        targetValue =
-                                if (isCreatePressed) 0.96f
-                                else if (isCreateHovered) 1.02f else 1.0f,
-                        animationSpec = spring(stiffness = Spring.StiffnessLow),
-                        label = "create_quiz_scale"
-                )
-
-        Box(
-                modifier =
-                        Modifier.align(Alignment.BottomCenter)
-                                .fillMaxWidth()
-                                .navigationBarsPadding()
-                                .padding(horizontal = 20.dp, vertical = 16.dp)
-        ) {
-            Box(
-                    modifier =
-                            Modifier.fillMaxWidth().graphicsLayer {
-                                scaleX = createScale
-                                scaleY = createScale
-                            }
-            ) {
-                // Solid dark shadow layer (styled like Log Out button)
-                Box(
-                        modifier =
-                                Modifier.matchParentSize()
-                                        .offset(x = 3.dp, y = 3.dp)
-                                        .background(HeaderPurple, RoundedCornerShape(22.dp))
-                )
-
-                // Upper main button layer
-                Box(
-                        modifier =
-                                Modifier.fillMaxWidth()
-                                        .background(
-                                                if (isCreatePressed || isCreateHovered)
-                                                        Color(0xFFC084FC)
-                                                else Color(0xFFDDD6FE),
-                                                RoundedCornerShape(22.dp)
-                                        )
-                                        .clickable(
-                                                interactionSource = createInteractionSource,
-                                                indication = null
-                                        ) { showCreateDialog = true }
-                                        .padding(vertical = 14.dp),
-                        contentAlignment = Alignment.Center
-                ) {
-                    Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Create Quizz",
-                                tint = HeaderPurple,
-                                modifier = Modifier.size(22.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                                text = "Create Quizz",
-                                color = HeaderPurple,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 17.sp,
-                                fontFamily = Inter
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    // ---- Create Quiz Wizard Dialog ----
-    if (showCreateDialog) {
-        CreateQuizWizardDialog(
-                subjects = state.userSubjects,
-                isGenerating = state.isGeneratingQuiz,
-                onDismiss = { if (!state.isGeneratingQuiz) showCreateDialog = false },
-                onCreate = { topic, prompt, totalQuestions, difficulty ->
-                    viewModel.createQuizWithAi(userId, topic, prompt, totalQuestions, difficulty)
-                }
-        )
-    }
-
-    LaunchedEffect(state.activeQuiz) {
-        if (state.activeQuiz != null) {
-            showCreateDialog = false
         }
     }
 

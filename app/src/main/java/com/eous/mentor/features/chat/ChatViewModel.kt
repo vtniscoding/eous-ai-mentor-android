@@ -386,6 +386,42 @@ class ChatViewModel(
                                                     return@onSuccess
                                                 }
 
+                                                // Detect Refusal
+                                                val parsed = AnswerParser.parse(aiResponse.reply, aiResponse.subject)
+                                                if (parsed.type == AnswerType.REFUSAL) {
+                                                    val isOnlyMessage = _state.value.messages.size <= 1
+                                                    if (isOnlyMessage) {
+                                                        chatRepository.deleteSession(session.id!!)
+                                                        _state.update { state ->
+                                                            val updatedSessions = state.sessions.filter { it.id != session.id }
+                                                            sessionMessagesCache.remove(session.id)
+                                                            state.copy(
+                                                                    sessions = updatedSessions,
+                                                                    activeSession = null,
+                                                                    messages = emptyList(),
+                                                                    isSending = false,
+                                                                    isAiResponding = false,
+                                                                    errorMessage = "Cannot assist with this request. I can only assist with academic and study-related queries."
+                                                            )
+                                                        }
+                                                    } else {
+                                                        savedUserMsg.id?.let { msgId ->
+                                                            chatRepository.deleteMessage(msgId)
+                                                        }
+                                                        _state.update { state ->
+                                                            val filtered = state.messages.filter { it.id != savedUserMsg.id }
+                                                            sessionMessagesCache[session.id!!] = filtered
+                                                            state.copy(
+                                                                    messages = filtered,
+                                                                    isSending = false,
+                                                                    isAiResponding = false,
+                                                                    errorMessage = "Cannot assist with this request. I can only assist with academic and study-related queries."
+                                                            )
+                                                        }
+                                                    }
+                                                    return@onSuccess
+                                                }
+
                                                 // 3. Check if AI generated a Quiz
                                                 var createdQuizId: String? = null
                                                 val q = aiResponse.quiz

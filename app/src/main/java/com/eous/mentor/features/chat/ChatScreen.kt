@@ -124,6 +124,13 @@ fun Chat(
         var showAttachmentMenu by remember { mutableStateOf(false) }
         var showHistorySheet by remember { mutableStateOf(false) }
 
+        LaunchedEffect(state.errorMessage) {
+                state.errorMessage?.let { error ->
+                        Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                        viewModel.clearError()
+                }
+        }
+
         // Image picker launcher
         val imagePickerLauncher =
                 rememberLauncherForActivityResult(
@@ -190,33 +197,37 @@ fun Chat(
                                                 )
                                 )
         ) {
-                if (state.activeSession == null) {
-                        // --- LANDING SCREEN LAYOUT ---
-                        ChatLandingContent(
-                                state = state,
-                                viewModel = viewModel,
-                                showAttachmentMenu = showAttachmentMenu,
-                                onToggleAttachment = { showAttachmentMenu = it },
-                                imagePickerLauncher = imagePickerLauncher,
-                                cameraLauncher = cameraLauncher,
-                                onShowHistory = { showHistorySheet = true }
-                        )
+                if (state.isLoadingSessions) {
+                        com.eous.mentor.core.ui.components.PreparingLoadingScreen()
                 } else {
-                        // --- ANSWER OUTPUT SCREEN LAYOUT ---
-                        AnswerOutputContent(
-                                state = state,
-                                viewModel = viewModel,
-                                onNavigateToQuizzes = onNavigateToQuizzes
-                        )
-                }
+                        if (state.activeSession == null) {
+                                // --- LANDING SCREEN LAYOUT ---
+                                ChatLandingContent(
+                                        state = state,
+                                        viewModel = viewModel,
+                                        showAttachmentMenu = showAttachmentMenu,
+                                        onToggleAttachment = { showAttachmentMenu = it },
+                                        imagePickerLauncher = imagePickerLauncher,
+                                        cameraLauncher = cameraLauncher,
+                                        onShowHistory = { showHistorySheet = true }
+                                )
+                        } else {
+                                // --- ANSWER OUTPUT SCREEN LAYOUT ---
+                                AnswerOutputContent(
+                                        state = state,
+                                        viewModel = viewModel,
+                                        onNavigateToQuizzes = onNavigateToQuizzes
+                                )
+                        }
 
-                // --- HISTORY BOTTOM SHEET ---
-                if (showHistorySheet) {
-                        HistoryBottomSheet(
-                                state = state,
-                                viewModel = viewModel,
-                                onDismiss = { showHistorySheet = false }
-                        )
+                        // --- HISTORY BOTTOM SHEET ---
+                        if (showHistorySheet) {
+                                HistoryBottomSheet(
+                                        state = state,
+                                        viewModel = viewModel,
+                                        onDismiss = { showHistorySheet = false }
+                                )
+                        }
                 }
         }
 }
@@ -343,23 +354,28 @@ fun ChatLandingContent(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                        Box(modifier = Modifier.offset(x = (-8).dp)) {
+                                        Box {
                                                 Box(
                                                         modifier =
-                                                                Modifier.clip(CircleShape)
+                                                                Modifier.size(32.dp)
+                                                                        .background(
+                                                                                color = Color(0xFFE2E8F0),
+                                                                                shape = CircleShape
+                                                                        )
+                                                                        .clip(CircleShape)
                                                                         .clickable {
                                                                                 onToggleAttachment(
                                                                                         true
                                                                                 )
-                                                                        }
-                                                                        .padding(8.dp)
+                                                                        },
+                                                        contentAlignment = Alignment.Center
                                                 ) {
                                                         Icon(
                                                                 imageVector = Icons.Default.Add,
                                                                 contentDescription =
                                                                         "Attachment Menu",
                                                                 tint = Color(0xFF94A3B8),
-                                                                modifier = Modifier.size(24.dp)
+                                                                modifier = Modifier.size(16.dp)
                                                         )
                                                 }
                                                 DropdownMenu(
@@ -571,15 +587,12 @@ fun AnswerOutputContent(
                 modifier =
                         Modifier.fillMaxSize()
                                 .statusBarsPadding()
-                                .padding(bottom = 80.dp) // Leave space for main tab bar
                                 .navigationBarsPadding()
                                 .imePadding()
-                                .verticalScroll(rememberScrollState())
-                                .padding(horizontal = 24.dp)
         ) {
                 // Header Bar
                 Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -613,8 +626,9 @@ fun AnswerOutputContent(
                                 )
                         }
 
-                        val latestAiMsg = state.messages.lastOrNull { it.role == "ai" }
+                        val latestAiMsg = qaPairs.lastOrNull()?.second
                         val isBookmarked = latestAiMsg?.is_bookmarked == true
+
                         IconButton(
                                 onClick = {
                                         if (latestAiMsg != null) {
@@ -639,40 +653,19 @@ fun AnswerOutputContent(
                         }
                 }
 
-                // Render each Q&A Pair
-                if (qaPairs.isEmpty() && state.isAiResponding) {
-                        // User message not in list yet, but sending
-                        YourQuestionCard(
-                                questionText = state.inputText,
-                                imageUrl = state.pendingImageUrl
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        ThinkingIndicator()
-                } else {
-                        qaPairs.forEachIndexed { index, pair ->
-                                val isLast = index == qaPairs.lastIndex
-                                val isThinking = isLast && pair.second == null && state.isAiResponding
-
-                                YourQuestionCard(
-                                        questionText = pair.first.content,
-                                        imageUrl = pair.first.image
-                                )
-
-                                Spacer(modifier = Modifier.height(16.dp))
-
-                                if (isThinking) {
-                                        ThinkingIndicator()
-                                } else if (pair.second != null) {
-                                        AiAnswerContent(
-                                                aiMsg = pair.second!!,
-                                                showSupportChips = isLast && !state.isAiResponding,
-                                                viewModel = viewModel,
-                                                onNavigateToQuizzes = onNavigateToQuizzes
-                                        )
-                                }
-                                Spacer(modifier = Modifier.height(24.dp))
-                        }
-                }
+                // Render the entire chat thread in a Single Native WebView
+                RichChatThreadView(
+                        qaPairs = qaPairs,
+                        isThinking = state.isAiResponding,
+                        inputText = state.inputText,
+                        pendingImageUrl = state.pendingImageUrl,
+                        modifier = Modifier.fillMaxSize(),
+                        onSupportChipClicked = { action ->
+                                viewModel.onInputTextChanged(action)
+                                viewModel.sendMessage()
+                        },
+                        onNavigateToQuizzes = onNavigateToQuizzes
+                )
         }
 }
 
@@ -1051,7 +1044,7 @@ fun HistoryBottomSheet(state: ChatState, viewModel: ChatViewModel, onDismiss: ()
                                         .padding(horizontal = 24.dp, vertical = 8.dp)
                 ) {
                         Text(
-                                text = "Lịch sử câu hỏi",
+                                text = "History",
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF1E293B)
@@ -1067,7 +1060,7 @@ fun HistoryBottomSheet(state: ChatState, viewModel: ChatViewModel, onDismiss: ()
                         ) {
                                 if (state.sessions.isEmpty()) {
                                         Text(
-                                                text = "Chưa có lịch sử câu hỏi",
+                                                text = "No history available",
                                                 color = Color(0xFF94A3B8),
                                                 fontSize = 14.sp
                                         )

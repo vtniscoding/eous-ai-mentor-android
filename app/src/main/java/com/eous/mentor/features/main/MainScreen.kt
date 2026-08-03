@@ -74,11 +74,11 @@ fun MainScreen(
     navController: NavController,
     userId: String,
     viewModel: MainScreenViewModel = remember { MainScreenViewModel() },
-    homeViewModel: HomeViewModel = remember(userId) { HomeViewModel(userId) }
+    homeViewModel: HomeViewModel = remember(userId) { HomeViewModel(userId) },
+    chatViewModel: ChatViewModel = remember(userId) { ChatViewModel(userId = userId) }
 ) {
     val state by viewModel.state.collectAsState()
 
-    val chatViewModel = remember(userId) { ChatViewModel(userId = userId) }
     val libraryViewModel = remember(userId) { LibraryViewModel(userId = userId) }
     val personalViewModel = remember(userId) { com.eous.mentor.features.personal.PersonalViewModel(userId = userId) }
     val progressViewModel = remember(userId) { ProgressViewModel(userId = userId) }

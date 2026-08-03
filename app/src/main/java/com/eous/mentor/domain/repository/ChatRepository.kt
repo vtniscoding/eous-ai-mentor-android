@@ -18,6 +18,7 @@ interface ChatRepository {
     // ---- Messages ----
     suspend fun getMessages(sessionId: String): Result<List<ChatMessage>>
     suspend fun insertMessage(message: ChatMessage): Result<ChatMessage>
+    suspend fun deleteMessage(messageId: String): Result<Unit>
 
     // ---- AI ----
     suspend fun getAiResponse(
