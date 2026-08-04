@@ -5,8 +5,11 @@ import com.eous.mentor.domain.model.Bookmark
 import com.eous.mentor.domain.model.Profile
 import com.eous.mentor.domain.model.Quiz
 import com.eous.mentor.domain.model.QuizQuestion
+import com.eous.mentor.domain.model.Friendship
+import com.eous.mentor.domain.model.FriendshipWithProfile
 import com.eous.mentor.domain.repository.UserRepository
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.storage.storage
 import kotlinx.serialization.Serializable
 
@@ -233,6 +236,133 @@ class UserRepositoryImpl : UserRepository {
                 filter { eq("id", userId) }
             }
             Result.success(Unit)
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun searchUsers(query: String): Result<List<Profile>> {
+        return try {
+            val trimmedQuery = "%${query.trim()}%"
+            val byEmail = supabase.from("profiles")
+                .select {
+                    filter {
+                        ilike("email", trimmedQuery)
+                    }
+                }
+                .decodeList<Profile>()
+            val byName = supabase.from("profiles")
+                .select {
+                    filter {
+                        ilike("display_name", trimmedQuery)
+                    }
+                }
+                .decodeList<Profile>()
+            
+            val combined = (byEmail + byName).distinctBy { it.id }
+            Result.success(combined)
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun sendFriendRequest(senderId: String, receiverId: String): Result<Unit> {
+        return try {
+            supabase.from("friendships").insert(
+                Friendship(
+                    sender_id = senderId,
+                    receiver_id = receiverId,
+                    status = "pending"
+                )
+            )
+            Result.success(Unit)
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun acceptFriendRequest(senderId: String, receiverId: String): Result<Unit> {
+        return try {
+            supabase.from("friendships").update({
+                set("status", "accepted")
+                set("updated_at", java.time.Instant.now().toString())
+            }) {
+                filter {
+                    eq("sender_id", senderId)
+                    eq("receiver_id", receiverId)
+                }
+            }
+            Result.success(Unit)
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun declineOrRemoveFriendship(senderId: String, receiverId: String): Result<Unit> {
+        return try {
+            supabase.from("friendships").delete {
+                filter {
+                    eq("sender_id", senderId)
+                    eq("receiver_id", receiverId)
+                }
+            }
+            supabase.from("friendships").delete {
+                filter {
+                    eq("sender_id", receiverId)
+                    eq("receiver_id", senderId)
+                }
+            }
+            Result.success(Unit)
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getPendingRequests(userId: String): Result<List<FriendshipWithProfile>> {
+        return try {
+            val requests = supabase.from("friendships")
+                .select(columns = Columns.raw("*, sender:profiles(*)")) {
+                    filter {
+                        eq("receiver_id", userId)
+                        eq("status", "pending")
+                    }
+                }
+                .decodeList<FriendshipWithProfile>()
+            Result.success(requests)
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getFriendsList(userId: String): Result<List<Profile>> {
+        return try {
+            val sentFriendships = supabase.from("friendships")
+                .select(columns = Columns.raw("*, receiver:profiles(*)")) {
+                    filter {
+                        eq("sender_id", userId)
+                        eq("status", "accepted")
+                    }
+                }
+                .decodeList<FriendshipWithProfile>()
+
+            val receivedFriendships = supabase.from("friendships")
+                .select(columns = Columns.raw("*, sender:profiles(*)")) {
+                    filter {
+                        eq("receiver_id", userId)
+                        eq("status", "accepted")
+                    }
+                }
+                .decodeList<FriendshipWithProfile>()
+
+            val friends = sentFriendships.mapNotNull { it.receiver } +
+                          receivedFriendships.mapNotNull { it.sender }
+            Result.success(friends)
         } catch (e: Throwable) {
             e.printStackTrace()
             Result.failure(e)

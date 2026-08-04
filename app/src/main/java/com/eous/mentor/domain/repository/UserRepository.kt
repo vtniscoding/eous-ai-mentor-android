@@ -4,6 +4,7 @@ import com.eous.mentor.domain.model.Bookmark
 import com.eous.mentor.domain.model.Profile
 import com.eous.mentor.domain.model.Quiz
 import com.eous.mentor.domain.model.QuizQuestion
+import com.eous.mentor.domain.model.FriendshipWithProfile
 
 interface UserRepository {
     suspend fun getProfile(userId: String): Result<Profile?>
@@ -35,5 +36,12 @@ interface UserRepository {
         explanationStyle: String,
         subjects: List<String>
     ): Result<Unit>
+
+    suspend fun searchUsers(query: String): Result<List<Profile>>
+    suspend fun sendFriendRequest(senderId: String, receiverId: String): Result<Unit>
+    suspend fun acceptFriendRequest(senderId: String, receiverId: String): Result<Unit>
+    suspend fun declineOrRemoveFriendship(senderId: String, receiverId: String): Result<Unit>
+    suspend fun getPendingRequests(userId: String): Result<List<FriendshipWithProfile>>
+    suspend fun getFriendsList(userId: String): Result<List<Profile>>
 }
 

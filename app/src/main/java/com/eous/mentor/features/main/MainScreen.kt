@@ -29,6 +29,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import androidx.compose.animation.animateColorAsState
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.eous.mentor.core.ui.components.MainNavigationBar
 import com.eous.mentor.core.ui.theme.*
 import com.eous.mentor.features.chat.Chat
@@ -74,7 +75,7 @@ private fun getScreenIndex(route: String): Int {
 fun MainScreen(
     navController: NavController,
     userId: String,
-    viewModel: MainScreenViewModel = remember { MainScreenViewModel() },
+    viewModel: MainScreenViewModel = viewModel(),
     homeViewModel: HomeViewModel = remember(userId) { HomeViewModel(userId) },
     chatViewModel: ChatViewModel = remember(userId) { ChatViewModel(userId = userId) }
 ) {

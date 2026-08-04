@@ -21,6 +21,7 @@ data class PersonalState(
     val displayName: String = "User",
     val displayEmail: String = "",
     val initials: String = "U",
+    val friends: List<Profile> = emptyList(),
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false
 )
@@ -86,6 +87,11 @@ class PersonalViewModel(
                 }
                 val fetchedStats = statsRes.getOrNull()
 
+                val friendsRes = withContext(Dispatchers.IO) {
+                    RepositoryProvider.userRepository.getFriendsList(userId)
+                }
+                val fetchedFriends = friendsRes.getOrDefault(emptyList())
+
                 val name = fetchedProfile?.display_name
                     ?: fetchedProfile?.email?.substringBefore("@")
                     ?: _state.value.displayName
@@ -114,6 +120,7 @@ class PersonalViewModel(
                         displayName = name,
                         displayEmail = email,
                         initials = initStr,
+                        friends = fetchedFriends,
                         isLoading = false,
                         isRefreshing = false
                     )

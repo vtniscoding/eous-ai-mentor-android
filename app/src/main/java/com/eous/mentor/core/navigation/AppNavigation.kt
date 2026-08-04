@@ -193,6 +193,18 @@ fun AuthRouter() {
                             chatViewModel = chatViewModel!!
                     )
                 }
+                composable("leaderboards") {
+                    com.eous.mentor.features.leaderboard.LeaderboardsScreen(
+                        userId = activeUserId,
+                        navController = navController
+                    )
+                }
+                composable("friends") {
+                    com.eous.mentor.features.friends.FriendsScreen(
+                        userId = activeUserId,
+                        navController = navController
+                    )
+                }
             }
         }
 

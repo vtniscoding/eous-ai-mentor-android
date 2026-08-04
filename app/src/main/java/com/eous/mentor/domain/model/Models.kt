@@ -121,6 +121,28 @@ data class Bookmark(
 )
 
 @Serializable
+data class Friendship(
+        val id: String? = null,
+        val sender_id: String,
+        val receiver_id: String,
+        val status: String,
+        val created_at: String? = null,
+        val updated_at: String? = null
+)
+
+@Serializable
+data class FriendshipWithProfile(
+        val id: String? = null,
+        val sender_id: String,
+        val receiver_id: String,
+        val status: String,
+        val created_at: String? = null,
+        val updated_at: String? = null,
+        val sender: Profile? = null,
+        val receiver: Profile? = null
+)
+
+@Serializable
 data class BookmarkWithMessage(
         val id: String? = null,
         val user_id: String? = null,

@@ -42,6 +42,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.eous.mentor.core.navigation.navigateSafe
+import com.eous.mentor.domain.model.Profile
 import coil3.compose.AsyncImage
 import com.eous.mentor.R
 import com.eous.mentor.core.ui.theme.Inter
@@ -129,19 +131,40 @@ fun PersonalScreen(
                             Spacer(modifier = Modifier.height(20.dp))
 
                             // Stats Banner Card with Drop Shadow
-                            StatsBannerCard(streak = streak)
+                             StatsBannerCard(
+                                 streak = streak,
+                                 friendsCount = state.friends.size,
+                                 onFriendsClick = { navController.navigateSafe("friends") }
+                             )
 
-                            Spacer(modifier = Modifier.height(24.dp))
+                             Spacer(modifier = Modifier.height(24.dp))
 
-                            // 1. BADGES SECTION
-                            BadgesSection(streak = streak)
+                             // 0. MY FRIENDS SECTION
+                             MyFriendsSection(
+                                 navController = navController,
+                                 friends = state.friends
+                             )
 
-                            Spacer(modifier = Modifier.height(22.dp))
+                             Spacer(modifier = Modifier.height(22.dp))
 
-                            // 2. ACHIEVEMENTS SECTION
-                            AchievementsSection(streak = streak)
+                             // 1. BADGES SECTION
+                             val todayQuizzesCompleted = remember(state.dashboardStats?.quizzes) {
+                                 val todayStr = java.time.LocalDate.now().toString()
+                                 state.dashboardStats?.quizzes?.count { it.created_at.startsWith(todayStr) } ?: 0
+                             }
+                             BadgesSection(streak = streak, todayQuizzesCompleted = todayQuizzesCompleted)
 
-                            Spacer(modifier = Modifier.height(24.dp))
+                             Spacer(modifier = Modifier.height(22.dp))
+
+                             // 2. LEADERBOARDS SECTION
+                             LeaderboardsSection(
+                                 navController = navController,
+                                 displayName = state.displayName,
+                                 totalQueries = state.dashboardStats?.totalQueries ?: 0,
+                                 libraryItems = state.dashboardStats?.libraryItems ?: 0
+                             )
+
+                             Spacer(modifier = Modifier.height(24.dp))
 
                             // 3. PRO UPGRADE CARD with Drop Shadow & compact text spacing
                             ProUpgradeCard(onClaimPro = onOpenPro)
@@ -515,7 +538,11 @@ fun PersonalScreen(
 }
 
 @Composable
-private fun StatsBannerCard(streak: Int) {
+private fun StatsBannerCard(
+    streak: Int,
+    friendsCount: Int,
+    onFriendsClick: () -> Unit
+) {
     Box(modifier = Modifier.fillMaxWidth()) {
         // Ear accents matching design mockup
         Box(
@@ -609,6 +636,8 @@ private fun StatsBannerCard(streak: Int) {
                                                     Color(0xFF5E27B6),
                                                     RoundedCornerShape(16.dp)
                                             )
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .clickable { onFriendsClick() }
                                             .padding(vertical = 12.dp, horizontal = 4.dp),
                             contentAlignment = Alignment.Center
                     ) {
@@ -622,7 +651,7 @@ private fun StatsBannerCard(streak: Int) {
                                     )
                                 },
                                 label = "Friends",
-                                value = "5"
+                                value = friendsCount.toString()
                         )
                     }
                 }
@@ -656,7 +685,93 @@ private fun StatColumn(icon: @Composable () -> Unit, label: String, value: Strin
 }
 
 @Composable
-private fun BadgesSection(streak: Int) {
+private fun MyFriendsSection(
+    navController: NavController,
+    friends: List<Profile>
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { navController.navigateSafe("friends") },
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = "My Friends",
+                    color = Color.Black,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = Inter
+                )
+                Image(
+                    painter = painterResource(id = R.drawable.ic_heart),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = "View all friends",
+                tint = Color.Black,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (friends.isEmpty()) {
+            Text(
+                text = "No friends yet. Add friends to study together!",
+                color = Color(0xFF64748B),
+                fontSize = 13.sp,
+                fontFamily = Inter,
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+        } else {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                friends.take(4).forEach { friend ->
+                    val friendName = friend.display_name ?: friend.email?.substringBefore("@") ?: "User"
+                    val friendInitial = friendName.trim().split("\\s+".toRegex()).lastOrNull()?.firstOrNull()?.uppercase() ?: "U"
+                    Box(
+                        modifier = Modifier
+                            .size(60.dp)
+                            .background(Color(0xFFDDE0FF), CircleShape)
+                            .clip(CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (!friend.avatar_url.isNullOrEmpty()) {
+                            AsyncImage(
+                                model = friend.avatar_url,
+                                contentDescription = "Friend Avatar",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Text(
+                                text = friendInitial,
+                                color = PrimaryPurple,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = Inter
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BadgesSection(streak: Int, todayQuizzesCompleted: Int) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -697,6 +812,7 @@ private fun BadgesSection(streak: Int) {
             BadgeItem(drawableRes = R.drawable.ic_badge_streak_3, isUnlocked = streak >= 3)
             BadgeItem(drawableRes = R.drawable.ic_badge_streak_5, isUnlocked = streak >= 5)
             BadgeItem(drawableRes = R.drawable.ic_badge_streak_10, isUnlocked = streak >= 10)
+            BadgeItem(drawableRes = R.drawable.ic_chest, isUnlocked = todayQuizzesCompleted >= 5)
         }
     }
 }
@@ -717,58 +833,98 @@ private fun BadgeItem(drawableRes: Int, isUnlocked: Boolean) {
 }
 
 @Composable
-private fun AchievementsSection(streak: Int) {
+private fun LeaderboardsSection(
+    navController: NavController,
+    displayName: String,
+    totalQueries: Int,
+    libraryItems: Int
+) {
+    val userXp = totalQueries * 10 + libraryItems * 20
+    val userInitial = displayName.trim().split("\\s+".toRegex()).lastOrNull()?.firstOrNull()?.uppercase() ?: "U"
+
+    val leaderboardList = remember(displayName, userXp) {
+        val list = mutableListOf(
+            com.eous.mentor.features.leaderboard.LeaderboardEntry(name = displayName, xp = userXp, initials = userInitial, isCurrentUser = true),
+            com.eous.mentor.features.leaderboard.LeaderboardEntry(name = "Truong Nguyen", xp = 170, initials = "N", isCurrentUser = false),
+            com.eous.mentor.features.leaderboard.LeaderboardEntry(name = "Trieu Hoang", xp = 150, initials = "T", isCurrentUser = false)
+        )
+        list.sortByDescending { it.xp }
+        list
+    }
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { navController.navigateSafe("leaderboards") },
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
-                        text = "Achivement",
-                        color = Color.Black,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = Inter
+                    text = "Leaderboards",
+                    color = Color.Black,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = Inter
                 )
                 Image(
-                        painter = painterResource(id = R.drawable.ic_heart),
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                    painter = painterResource(id = R.drawable.ic_heart),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
                 )
             }
             Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = "View all achievements",
-                    tint = Color.Black,
-                    modifier = Modifier.size(22.dp)
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = "View Leaderboards",
+                tint = Color.Black,
+                modifier = Modifier.size(22.dp)
             )
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
         Row(
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.CenterVertically
-        ) { AchievementItem(drawableRes = R.drawable.ic_trophy_1, isUnlocked = streak >= 1) }
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            leaderboardList.take(3).forEachIndexed { index, entry ->
+                LeaderboardCompactItem(entry = entry, rank = index + 1)
+            }
+        }
     }
 }
 
 @Composable
-private fun AchievementItem(drawableRes: Int, isUnlocked: Boolean) {
-    Box(modifier = Modifier.size(76.dp), contentAlignment = Alignment.Center) {
-        Image(
-                painter = painterResource(id = drawableRes),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                colorFilter =
-                        if (isUnlocked) null
-                        else ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) }),
-                alpha = if (isUnlocked) 1.0f else 0.45f
+private fun LeaderboardCompactItem(entry: com.eous.mentor.features.leaderboard.LeaderboardEntry, rank: Int) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(60.dp)
+                .background(Color(0xFFDDE0FF), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = entry.initials,
+                color = Color(0xFF5B29A2),
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = Inter
+            )
+        }
+
+        Text(
+            text = if (rank == 1) "Top 1" else rank.toString(),
+            color = if (rank == 1) Color(0xFF5B29A2) else Color(0xFF64748B),
+            fontSize = 14.sp,
+            fontWeight = if (rank == 1) FontWeight.Bold else FontWeight.Medium,
+            fontFamily = Inter
         )
     }
 }
