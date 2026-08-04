@@ -44,5 +44,6 @@ interface UserRepository {
     suspend fun getPendingRequests(userId: String): Result<List<FriendshipWithProfile>>
     suspend fun getFriendsList(userId: String): Result<List<Profile>>
     suspend fun updateSessionId(userId: String, sessionId: String?): Result<Unit>
+    suspend fun getRemoteSessionId(userId: String): Result<String?>
 }
 

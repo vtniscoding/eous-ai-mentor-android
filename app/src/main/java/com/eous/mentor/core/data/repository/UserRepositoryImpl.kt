@@ -383,4 +383,15 @@ class UserRepositoryImpl : UserRepository {
             Result.failure(e)
         }
     }
+
+    override suspend fun getRemoteSessionId(userId: String): Result<String?> {
+        return try {
+            val profile = supabase.from("profiles")
+                    .select { filter { eq("id", userId) } }
+                    .decodeSingle<Profile>()
+            Result.success(profile.current_session_id)
+        } catch (e: Throwable) {
+            Result.failure(e)
+        }
+    }
 }

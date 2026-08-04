@@ -156,6 +156,63 @@ fun MainScreen(
         }
     }
 
+    LaunchedEffect(userId) {
+        if (userId.isNotEmpty()) {
+            while (true) {
+                kotlinx.coroutines.delay(8000L)
+                try {
+                    val remoteSessionId = com.eous.mentor.di.RepositoryProvider.userRepository.getRemoteSessionId(userId).getOrNull()
+                    val localSessionId = com.eous.mentor.di.RepositoryProvider.sessionRepository.getLocalSessionId(context)
+                    if (!remoteSessionId.isNullOrEmpty() && localSessionId.isNotEmpty() && localSessionId != remoteSessionId) {
+                        val profile = personalState.profile
+                        val currentAvatarUrl = profile?.avatar_url
+                        val currentEmail = profile?.email ?: com.eous.mentor.di.RepositoryProvider.sessionRepository.getCurrentUserEmail()
+                        com.eous.mentor.di.RepositoryProvider.sessionRepository.clearLocalSessionId(context)
+                        
+                        homeViewModel.logout(
+                            onSuccess = {
+                                if (!currentEmail.isNullOrBlank()) {
+                                    SavedAccountsRepository.saveAccount(
+                                        context,
+                                        com.eous.mentor.domain.model.SavedAccount(
+                                            email = currentEmail,
+                                            avatarUrl = currentAvatarUrl
+                                        )
+                                    )
+                                }
+                                Toast.makeText(
+                                    context,
+                                    "Session expired: Account logged in on another device!",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                val savedAccounts = SavedAccountsRepository.getSavedAccounts(context)
+                                val targetRoute = if (savedAccounts.isNotEmpty()) "relogin" else "login"
+                                navController.navigate(targetRoute) {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            },
+                            onError = {
+                                Toast.makeText(
+                                    context,
+                                    "Session expired. Logged out!",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                val savedAccounts = SavedAccountsRepository.getSavedAccounts(context)
+                                val targetRoute = if (savedAccounts.isNotEmpty()) "relogin" else "login"
+                                navController.navigate(targetRoute) {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            }
+                        )
+                        break
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
+
     val isScreenLoading = when (state.currentScreen) {
         "dashboard" -> homeState.isLoading
         "personal" -> personalState.isLoading
