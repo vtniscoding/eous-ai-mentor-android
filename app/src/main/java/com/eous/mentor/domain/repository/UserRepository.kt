@@ -29,4 +29,11 @@ interface UserRepository {
     suspend fun deleteAvatar(userId: String): Result<Unit>
     suspend fun updateExplanationStyle(userId: String, style: String): Result<Unit>
     suspend fun updateEducationLevel(userId: String, level: String): Result<Unit>
+    suspend fun saveOnboardingProfile(
+        userId: String,
+        educationLevel: String,
+        explanationStyle: String,
+        subjects: List<String>
+    ): Result<Unit>
 }
+

@@ -26,15 +26,19 @@ class GetProgressStatsUseCase(
 
         // 2. Fetch remaining data in parallel
         coroutineScope {
+            val sessionsDeferred = async { chatRepository.getSessions(userId).getOrDefault(emptyList()) }
             val messagesDeferred = async { chatRepository.getLegacyMessages(userId).getOrDefault(emptyList()) }
             val bookmarksDeferred = async { userRepository.getBookmarks(userId).getOrDefault(emptyList()) }
             val bookmarkedMessagesDeferred = async { chatRepository.getBookmarkedMessages(userId).getOrDefault(emptyList()) }
             val quizzesDeferred = async { userRepository.getQuizzes(userId).getOrDefault(emptyList()) }
 
+            val sessions = sessionsDeferred.await()
             val messages = messagesDeferred.await()
             val bookmarks = bookmarksDeferred.await()
             val bookmarkedMessages = bookmarkedMessagesDeferred.await()
             val quizzes = quizzesDeferred.await()
+
+            val sessionSubjectMap = sessions.filter { it.id != null }.associate { it.id!! to it.subject }
 
             val totalQueries = messages.count { it.role == "user" }
             val libraryItems = bookmarks.size
@@ -42,17 +46,23 @@ class GetProgressStatsUseCase(
             val subjectCounts = mutableMapOf<String, Int>()
 
             fun recordSubject(rawSub: String?) {
-                if (rawSub.isNullOrBlank()) return
+                if (rawSub.isNullOrBlank() || rawSub.equals("General", ignoreCase = true)) return
                 val trimmed = rawSub.trim().replaceFirstChar {
                     if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString()
                 }
                 subjectCounts[trimmed] = (subjectCounts[trimmed] ?: 0) + 1
             }
 
-            // Count subjects only from AI-classified chat messages
+            // Count subjects from AI-classified chat messages mapped to session subject
             messages.forEach { msg ->
                 if (msg.role == "ai") {
-                    recordSubject(msg.subject)
+                    val sessionSub = msg.session_id?.let { sessionSubjectMap[it] }
+                    val finalSub = if (sessionSub.isNullOrBlank() || sessionSub.equals("General", ignoreCase = true)) {
+                        msg.subject
+                    } else {
+                        sessionSub
+                    }
+                    recordSubject(finalSub)
                 }
             }
 

@@ -173,7 +173,9 @@ class UserRepositoryImpl : UserRepository {
 
     override suspend fun updateEducationLevel(userId: String, level: String): Result<Unit> {
         return try {
-            supabase.from("profiles").update({ set("education_level", level) }) {
+            supabase.from("profiles").update({
+                set("education_level", level)
+            }) {
                 filter { eq("id", userId) }
             }
             Result.success(Unit)
@@ -182,6 +184,29 @@ class UserRepositoryImpl : UserRepository {
             Result.failure(e)
         }
     }
+
+    override suspend fun saveOnboardingProfile(
+        userId: String,
+        educationLevel: String,
+        explanationStyle: String,
+        subjects: List<String>
+    ): Result<Unit> {
+        return try {
+            supabase.from("profiles").update({
+                set("education_level", educationLevel)
+                set("explanation_style", explanationStyle)
+                set("subjects", subjects)
+                set("onboarding_completed", true)
+            }) {
+                filter { eq("id", userId) }
+            }
+            Result.success(Unit)
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
 
     override suspend fun uploadAvatar(userId: String, imageBytes: ByteArray): Result<String> {
         return try {

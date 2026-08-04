@@ -107,7 +107,8 @@ data class Message(
         val role: String,
         val content: String = "",
         val subject: String? = null,
-        val created_at: String? = null
+        val created_at: String? = null,
+        val session_id: String? = null
 )
 
 @Serializable

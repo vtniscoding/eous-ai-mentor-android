@@ -90,6 +90,13 @@ fun MainScreen(
     val personalState by personalViewModel.state.collectAsState()
     val progressState by progressViewModel.state.collectAsState()
 
+    LaunchedEffect(personalState.profile) {
+        val profile = personalState.profile
+        if (profile != null && !profile.onboarding_completed) {
+            viewModel.navigateTo("profile")
+        }
+    }
+
     val isScreenLoading = when (state.currentScreen) {
         "dashboard" -> homeState.isLoading
         "personal" -> personalState.isLoading
@@ -102,12 +109,18 @@ fun MainScreen(
 
     // Back handler: go back to settings from profile, personal from settings, or dashboard from any other non-dashboard tab
     if (state.currentScreen == "profile") {
-        BackHandler { viewModel.navigateTo("settings") }
+        val isForce = personalState.profile?.onboarding_completed == false
+        BackHandler {
+            if (!isForce) {
+                viewModel.navigateTo("settings")
+            }
+        }
     } else if (state.currentScreen == "settings") {
         BackHandler { viewModel.navigateTo("personal") }
     } else if (state.currentScreen != "dashboard") {
         BackHandler { viewModel.navigateTo("dashboard") }
     }
+
 
     val bgCol = Color(0xFFA566FE)
     Box(modifier = Modifier.fillMaxSize().background(bgCol)) {
@@ -335,9 +348,19 @@ fun MainScreen(
                         )
                     }
                     "profile" -> {
+                        val isForce = personalState.profile?.onboarding_completed == false
                         ProfileScreen(
                             userId = userId,
-                            onBack = { viewModel.navigateTo("settings") }
+                            isForceOnboarding = isForce,
+                            onBack = {
+                                if (!isForce) {
+                                    viewModel.navigateTo("settings")
+                                }
+                            },
+                            onComplete = {
+                                personalViewModel.loadData(isSilentRefresh = true)
+                                viewModel.navigateTo("dashboard")
+                            }
                         )
                     }
                 }
