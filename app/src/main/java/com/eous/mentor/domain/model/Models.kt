@@ -2,6 +2,8 @@ package com.eous.mentor.domain.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonNames
+import kotlinx.serialization.ExperimentalSerializationApi
 
 @Serializable
 data class SavedAccount(
@@ -138,16 +140,18 @@ data class Quiz(
         val total_questions: Int = 0,
         val current_question_index: Int = 0,
         val status: String = "not_started",
-        val difficulty: String = "medium",
+        val difficulty: String = "high_school",
         val created_at: String = ""
 )
 
 @Serializable
+@OptIn(ExperimentalSerializationApi::class)
 data class QuizQuestion(
-        val id: Int,
-        val question: String,
-        val options: List<String>,
-        val correctAnswerIndex: Int,
+        val id: Int = 0,
+        val question: String = "",
+        val options: List<String> = emptyList(),
+        @JsonNames("correct_answer_index", "correctOptionIndex", "correctAnswerIndex")
+        val correctAnswerIndex: Int = 0,
         val selectedAnswerIndex: Int? = null,
         val explanation: String? = null
 )

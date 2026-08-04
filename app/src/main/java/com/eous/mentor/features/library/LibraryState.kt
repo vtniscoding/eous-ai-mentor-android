@@ -12,5 +12,7 @@ data class LibraryState(
         val searchQuery: String = "",
         val practiceSubject: String = "Math",
         val practiceQuestionCount: Int = 0,
+        val isSuggestionDismissed: Boolean = false,
+        val hasPracticedToday: Boolean = false,
         val errorMessage: String? = null
 )

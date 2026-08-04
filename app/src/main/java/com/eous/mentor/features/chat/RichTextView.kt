@@ -18,9 +18,10 @@ fun RichTextView(
     modifier: Modifier = Modifier,
     textColor: String = "#1E293B",
     fontSize: String = "15px",
-    alignment: String = "left"
+    alignment: String = "left",
+    isCompact: Boolean = false
 ) {
-    var webViewHeight by remember { mutableStateOf(40) } // Start with a reasonable minimum height
+    var webViewHeight by remember { mutableStateOf(if (isCompact) 20 else 40) } // Start with a reasonable minimum height
 
     // Convert text to Base64 to prevent any quoting/escaping/Unicode parsing issues in JS
     val base64Text = remember(text) {
@@ -34,7 +35,9 @@ fun RichTextView(
         }
     }
 
-    val htmlContent = remember(base64Text, textColor, fontSize, alignment) {
+    val htmlContent = remember(base64Text, textColor, fontSize, alignment, isCompact) {
+        val bottomMargin = if (isCompact) "0px" else "10px"
+        val contentPadding = if (isCompact) "0px" else "2px 2px 16px 2px"
         """
         <!DOCTYPE html>
         <html>
@@ -57,7 +60,7 @@ fun RichTextView(
             body {
               font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
               font-size: $fontSize;
-              line-height: 1.65;
+              line-height: 1.4;
               color: $textColor;
               word-wrap: break-word;
               overflow-wrap: break-word;
@@ -66,7 +69,7 @@ fun RichTextView(
               user-select: none;
             }
             p {
-              margin: 0 0 10px 0;
+              margin: 0 0 $bottomMargin 0;
             }
             p:last-child {
               margin-bottom: 0;
@@ -113,7 +116,7 @@ fun RichTextView(
           </style>
         </head>
         <body>
-          <div id="content" style="padding: 2px 2px 16px 2px;"></div>
+          <div id="content" style="padding: $contentPadding;"></div>
           <script>
             function decodeBase64Utf8(base64) {
               const binaryString = atob(base64);
@@ -200,7 +203,11 @@ fun RichTextView(
                     fun onHeightReceived(height: Int) {
                         post {
                             val density = context.resources.displayMetrics.density
-                            val dpHeight = (height / density).toInt().coerceAtLeast(60) + 28
+                            val dpHeight = if (isCompact) {
+                                (height / density).toInt().coerceAtLeast(18) + 4
+                            } else {
+                                (height / density).toInt().coerceAtLeast(60) + 28
+                            }
                             if (Math.abs(webViewHeight - dpHeight) > 3) {
                                 webViewHeight = dpHeight
                             }

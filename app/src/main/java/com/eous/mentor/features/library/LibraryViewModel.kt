@@ -36,7 +36,15 @@ class LibraryViewModel(
             val bookmarksResult = chatRepository.getBookmarkedMessages(userId)
             val bookmarks = bookmarksResult.getOrDefault(emptyList())
 
-            // 2. Fetch history chat sessions
+            // 2. Fetch quizzes to check if user has practiced today
+            val quizzesResult = userRepository.getQuizzes(userId)
+            val quizzes = quizzesResult.getOrDefault(emptyList())
+            val hasPracticedToday = quizzes.any { quiz ->
+                val time = parseCreatedAt(quiz.created_at) ?: 0L
+                isToday(time)
+            }
+
+            // 3. Fetch history chat sessions
             chatRepository.getSessions(userId)
                 .onSuccess { sessionsList ->
                     // Extract unique subjects from user's sessions to dynamically update the filters
@@ -64,6 +72,7 @@ class LibraryViewModel(
                             sessions = sessionsList,
                             practiceSubject = practiceSubject,
                             practiceQuestionCount = practiceQuestionCount,
+                            hasPracticedToday = hasPracticedToday,
                             isLoading = false
                         )
                     }
@@ -78,6 +87,14 @@ class LibraryViewModel(
                     }
                 }
         }
+    }
+
+    private fun isToday(timestamp: Long): Boolean {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        sdf.timeZone = TimeZone.getTimeZone("UTC")
+        val todayStr = sdf.format(Date())
+        val dateStr = sdf.format(Date(timestamp))
+        return todayStr == dateStr
     }
 
     private fun parseCreatedAt(createdAt: String?): Long? {
@@ -144,6 +161,10 @@ class LibraryViewModel(
                     }
             }
         }
+    }
+
+    fun dismissSuggestion() {
+        _state.update { it.copy(isSuggestionDismissed = true) }
     }
 
     fun clearError() {

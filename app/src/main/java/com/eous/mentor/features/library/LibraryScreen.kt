@@ -39,6 +39,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.eous.mentor.R
@@ -83,7 +86,7 @@ fun Library(
         }
     }
 
-    var isSuggestionDismissed by remember { mutableStateOf(false) }
+
 
     // Map sessions and bookmarked messages to library item wrappers
     val libraryItems = remember(state.sessions, state.bookmarkedMessages) {
@@ -220,7 +223,7 @@ fun Library(
                 }
 
                 // Dynamic Practice Suggestion Card (if count >= 3 and not dismissed)
-                if (state.practiceQuestionCount >= 3 && !isSuggestionDismissed) {
+                if (state.practiceQuestionCount >= 3 && !state.isSuggestionDismissed) {
                     item {
                         Card(
                             colors = CardDefaults.cardColors(containerColor = Color(0xFFE0D4FF)),
@@ -234,7 +237,7 @@ fun Library(
                             ) {
                                 // Close button at top right
                                 IconButton(
-                                    onClick = { isSuggestionDismissed = true },
+                                    onClick = { viewModel.dismissSuggestion() },
                                     modifier = Modifier
                                         .size(24.dp)
                                         .align(Alignment.TopEnd)
@@ -264,7 +267,17 @@ fun Library(
                                             fontFamily = Inter
                                         )
                                         Text(
-                                            text = "You have asked ${state.practiceQuestionCount} questions about ${state.practiceSubject} this week. Do a small practice to remember it longer!",
+                                            text = buildAnnotatedString {
+                                                append("You have asked ")
+                                                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = Color(0xFF5B29A2))) {
+                                                    append("${state.practiceQuestionCount} questions")
+                                                }
+                                                append(" about ")
+                                                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = Color(0xFF5B29A2))) {
+                                                    append(state.practiceSubject)
+                                                }
+                                                append(" this week. Do a small practice to remember it longer!")
+                                            },
                                             color = Color(0xFF475569),
                                             fontSize = 12.sp,
                                             lineHeight = 16.sp,
@@ -273,13 +286,18 @@ fun Library(
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Button(
                                             onClick = { onPracticeClick(state.practiceSubject) },
-                                            colors = ButtonDefaults.buttonColors(containerColor = SubjectHighlightColor),
+                                            enabled = !state.hasPracticedToday,
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = SubjectHighlightColor,
+                                                disabledContainerColor = Color(0xFFCBD5E1),
+                                                disabledContentColor = Color(0xFF94A3B8)
+                                            ),
                                             shape = RoundedCornerShape(12.dp),
                                             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                                         ) {
                                             Text(
-                                                text = "Practice now (+30xp)",
-                                                color = Color.White,
+                                                text = if (state.hasPracticedToday) "You practiced today" else "Practice now (+30xp)",
+                                                color = if (state.hasPracticedToday) Color(0xFF94A3B8) else Color.White,
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 fontFamily = Inter

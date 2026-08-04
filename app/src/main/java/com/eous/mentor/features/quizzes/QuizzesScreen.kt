@@ -41,6 +41,7 @@ import com.eous.mentor.core.ui.components.PreparingQuizzScreen
 import com.eous.mentor.core.ui.theme.Inter
 import com.eous.mentor.domain.model.Quiz
 import com.eous.mentor.domain.model.QuizQuestion
+import com.eous.mentor.features.chat.RichTextView
 
 private val HeaderPurple = Color(0xFF5B29A2)
 
@@ -302,14 +303,14 @@ private fun QuizCardItem(quiz: Quiz, onClick: () -> Unit) {
                     // Difficulty Badge
                     val (diffBg, diffText) =
                             when (quiz.difficulty.lowercase()) {
-                                "easy" -> Color(0xFFDCFCE7) to "🟢 Easy"
-                                "hard" -> Color(0xFFFEE2E2) to "🔴 Hard"
-                                else -> Color(0xFFFEF3C7) to "🟡 Medium"
+                                "middle_school", "easy" -> Color(0xFFDCFCE7) to "🟢 Middle School"
+                                "university", "college", "hard" -> Color(0xFFFEE2E2) to "🔴 University/College"
+                                else -> Color(0xFFFEF3C7) to "🟡 High School"
                             }
                     val diffTextColor =
                             when (quiz.difficulty.lowercase()) {
-                                "easy" -> Color(0xFF15803D)
-                                "hard" -> Color(0xFFB91C1C)
+                                "middle_school", "easy" -> Color(0xFF15803D)
+                                "university", "college", "hard" -> Color(0xFFB91C1C)
                                 else -> Color(0xFFB45309)
                             }
                     Surface(shape = RoundedCornerShape(12.dp), color = diffBg) {
@@ -597,13 +598,11 @@ private fun QuizPlayerDialog(
                                     fontFamily = Inter
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(
+                            RichTextView(
                                     text = currentQuestion.question,
-                                    color = Color(0xFF0F172A),
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = Inter,
-                                    lineHeight = 26.sp
+                                    textColor = "#0F172A",
+                                    fontSize = "16px",
+                                    modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }
@@ -640,7 +639,7 @@ private fun QuizPlayerDialog(
                                 }
 
                         Surface(
-                                onClick = { onSelectAnswer(currentIndex, aIdx) },
+                                onClick = { if (!hasAnswered) onSelectAnswer(currentIndex, aIdx) },
                                 shape = RoundedCornerShape(16.dp),
                                 color = optionBgColor,
                                 border =
@@ -683,23 +682,18 @@ private fun QuizPlayerDialog(
 
                                 Spacer(modifier = Modifier.width(14.dp))
 
-                                Text(
+                                val optionHtmlColor = when {
+                                    hasAnswered && isCorrectOption -> "#15803D"
+                                    hasAnswered && isSelected -> "#B91C1C"
+                                    isSelected -> "#7F43D4"
+                                    else -> "#1E293B"
+                                }
+                                RichTextView(
                                         text = optionText,
-                                        color =
-                                                when {
-                                                    hasAnswered && isCorrectOption ->
-                                                            Color(0xFF15803D)
-                                                    hasAnswered && isSelected -> Color(0xFFB91C1C)
-                                                    isSelected -> HeaderPurple
-                                                    else -> Color(0xFF1E293B)
-                                                },
-                                        fontWeight =
-                                                if (isSelected || (hasAnswered && isCorrectOption))
-                                                        FontWeight.Bold
-                                                else FontWeight.Medium,
-                                        fontSize = 15.sp,
-                                        fontFamily = Inter,
-                                        modifier = Modifier.weight(1f)
+                                        textColor = optionHtmlColor,
+                                        fontSize = "15px",
+                                        modifier = Modifier.weight(1f),
+                                        isCompact = true
                                 )
 
                                 if (hasAnswered && isCorrectOption) {
@@ -751,12 +745,11 @@ private fun QuizPlayerDialog(
                                         fontFamily = Inter
                                 )
                                 Spacer(modifier = Modifier.height(6.dp))
-                                Text(
+                                RichTextView(
                                         text = explanationText,
-                                        color = Color(0xFF0C4A6E),
-                                        fontSize = 13.sp,
-                                        fontFamily = Inter,
-                                        lineHeight = 20.sp
+                                        textColor = "#0C4A6E",
+                                        fontSize = "13px",
+                                        modifier = Modifier.fillMaxWidth()
                                 )
                             }
                         }
@@ -911,7 +904,7 @@ private fun CreateQuizWizardDialog(
 ) {
     var currentStep by remember { mutableIntStateOf(1) } // Step 1, 2, 3
     var topicText by remember { mutableStateOf("") }
-    var selectedDifficulty by remember { mutableStateOf("medium") }
+    var selectedDifficulty by remember { mutableStateOf("high_school") }
     var selectedQuestionCount by remember { mutableIntStateOf(5) }
 
     val suggestedChips =
@@ -1133,13 +1126,21 @@ private fun Step1TopicScreen(
 private fun Step2DifficultyScreen(selectedDifficulty: String, onSelect: (String) -> Unit) {
     val items =
             listOf(
-                    Triple("easy", "🟢 Easy", "Basic concepts & foundational practice"),
                     Triple(
-                            "medium",
-                            "🟡 Medium",
-                            "Standard test questions with balanced challenge"
+                            "middle_school",
+                            "🟢 Middle School",
+                            "Basic concepts & foundational practice for younger learners"
                     ),
-                    Triple("hard", "🔴 Hard", "Advanced problem solving & tricky questions")
+                    Triple(
+                            "high_school",
+                            "🟡 High School",
+                            "Standard challenge level aligned with high school curriculum"
+                    ),
+                    Triple(
+                            "university",
+                            "🔴 University/College",
+                            "Advanced academic level & analytical problem solving"
+                    )
             )
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {

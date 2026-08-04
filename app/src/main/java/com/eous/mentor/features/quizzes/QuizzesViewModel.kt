@@ -56,17 +56,24 @@ class QuizzesViewModel(
         topic: String,
         prompt: String,
         totalQuestions: Int = 5,
-        difficulty: String = "medium"
+        difficulty: String? = null
     ) {
         viewModelScope.launch {
             val startTime = System.currentTimeMillis()
             _uiState.update { it.copy(isGeneratingQuiz = true) }
 
+            val profileRes = userRepository.getProfile(userId)
+            val userEducationLevel = profileRes.getOrNull()?.education_level ?: "high_school"
+            val quizDifficulty = if (difficulty.isNullOrBlank() || difficulty == "medium") userEducationLevel else difficulty
+
             val userTopic = topic.ifBlank { "General" }
             val userPrompt = prompt.ifBlank { userTopic }
-            val aiMessagePrompt = "Tạo bài tập trắc nghiệm $totalQuestions câu hỏi môn $userTopic độ khó $difficulty với chủ đề: $userPrompt"
+            val aiMessagePrompt = "Tạo bài tập trắc nghiệm $totalQuestions câu hỏi môn $userTopic độ khó $quizDifficulty với chủ đề: $userPrompt"
 
             val aiResult = chatRepository.getAiResponse(aiMessagePrompt, emptyList(), null)
+            aiResult.onFailure {
+                android.util.Log.e("QuizzesViewModel", "Failed to get AI quiz response", it)
+            }
             val aiGeneratedQuiz = aiResult.getOrNull()?.quiz
             val questions = aiGeneratedQuiz?.questions?.ifEmpty { null } ?: createFallbackQuestions(userTopic, userPrompt, totalQuestions)
             val quizTitle = aiGeneratedQuiz?.title?.ifBlank { null } ?: userPrompt
@@ -77,7 +84,7 @@ class QuizzesViewModel(
                 title = quizTitle,
                 totalQuestions = questions.size,
                 questions = questions,
-                difficulty = difficulty
+                difficulty = quizDifficulty
             )
 
             val elapsedTime = System.currentTimeMillis() - startTime
