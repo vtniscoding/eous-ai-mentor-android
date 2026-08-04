@@ -7,6 +7,8 @@ import com.eous.mentor.domain.model.DashboardStats
 import com.eous.mentor.domain.model.Profile
 import com.eous.mentor.domain.usecase.progress.GetProgressStatsUseCase
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +24,7 @@ data class PersonalState(
     val displayEmail: String = "",
     val initials: String = "U",
     val friends: List<Profile> = emptyList(),
+    val friendsWithXp: List<Pair<Profile, Int>> = emptyList(),
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false
 )
@@ -92,6 +95,18 @@ class PersonalViewModel(
                 }
                 val fetchedFriends = friendsRes.getOrDefault(emptyList())
 
+                // Load stats of all friends in parallel to get their XP points
+                val friendsWithXpList = fetchedFriends.map { friend ->
+                    async(Dispatchers.IO) {
+                        val statsRes = getProgressStatsUseCase(friend.id, recordActivity = false)
+                        val stats = statsRes.getOrNull()
+                        val queries = stats?.totalQueries ?: 0
+                        val bookmarks = stats?.libraryItems ?: 0
+                        val xp = queries * 10 + bookmarks * 20
+                        friend to xp
+                    }
+                }.awaitAll()
+
                 val name = fetchedProfile?.display_name
                     ?: fetchedProfile?.email?.substringBefore("@")
                     ?: _state.value.displayName
@@ -121,6 +136,7 @@ class PersonalViewModel(
                         displayEmail = email,
                         initials = initStr,
                         friends = fetchedFriends,
+                        friendsWithXp = friendsWithXpList,
                         isLoading = false,
                         isRefreshing = false
                     )

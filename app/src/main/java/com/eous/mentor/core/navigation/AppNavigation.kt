@@ -205,6 +205,14 @@ fun AuthRouter() {
                         navController = navController
                     )
                 }
+                composable("friend_profile/{targetUserId}") { backStackEntry ->
+                    val targetUserId = backStackEntry.arguments?.getString("targetUserId") ?: ""
+                    com.eous.mentor.features.friends.FriendProfileScreen(
+                        currentUserId = activeUserId,
+                        targetUserId = targetUserId,
+                        navController = navController
+                    )
+                }
             }
         }
 

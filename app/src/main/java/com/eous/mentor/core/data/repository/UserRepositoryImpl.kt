@@ -326,7 +326,7 @@ class UserRepositoryImpl : UserRepository {
     override suspend fun getPendingRequests(userId: String): Result<List<FriendshipWithProfile>> {
         return try {
             val requests = supabase.from("friendships")
-                .select(columns = Columns.raw("*, sender:profiles(*)")) {
+                .select(columns = Columns.raw("*, sender:profiles!sender_id(*)")) {
                     filter {
                         eq("receiver_id", userId)
                         eq("status", "pending")
@@ -343,7 +343,7 @@ class UserRepositoryImpl : UserRepository {
     override suspend fun getFriendsList(userId: String): Result<List<Profile>> {
         return try {
             val sentFriendships = supabase.from("friendships")
-                .select(columns = Columns.raw("*, receiver:profiles(*)")) {
+                .select(columns = Columns.raw("*, receiver:profiles!receiver_id(*)")) {
                     filter {
                         eq("sender_id", userId)
                         eq("status", "accepted")
@@ -352,7 +352,7 @@ class UserRepositoryImpl : UserRepository {
                 .decodeList<FriendshipWithProfile>()
 
             val receivedFriendships = supabase.from("friendships")
-                .select(columns = Columns.raw("*, sender:profiles(*)")) {
+                .select(columns = Columns.raw("*, sender:profiles!sender_id(*)")) {
                     filter {
                         eq("receiver_id", userId)
                         eq("status", "accepted")

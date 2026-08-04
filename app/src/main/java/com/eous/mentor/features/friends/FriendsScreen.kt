@@ -151,6 +151,7 @@ fun FriendsScreen(
                     when (selectedTabIndex) {
                         0 -> MyFriendsTab(
                             friends = state.friends,
+                            navController = navController,
                             onUnfriend = { viewModel.declineOrRemoveFriendship(it.id) }
                         )
                         1 -> AddFriendsTab(
@@ -159,12 +160,14 @@ fun FriendsScreen(
                             allFriendships = state.allFriendships,
                             userId = userId,
                             isSearching = state.isSearching,
+                            navController = navController,
                             onSearchQueryChange = { viewModel.searchUsers(it) },
                             onAddFriend = { viewModel.sendFriendRequest(it) },
                             onAcceptFriend = { viewModel.acceptFriendRequest(it) }
                         )
                         2 -> RequestsTab(
                             requests = state.pendingRequests,
+                            navController = navController,
                             onAccept = { viewModel.acceptFriendRequest(it) },
                             onDecline = { viewModel.declineOrRemoveFriendship(it) }
                         )
@@ -178,6 +181,7 @@ fun FriendsScreen(
 @Composable
 private fun MyFriendsTab(
     friends: List<Profile>,
+    navController: NavController,
     onUnfriend: (Profile) -> Unit
 ) {
     if (friends.isEmpty()) {
@@ -211,7 +215,8 @@ private fun MyFriendsTab(
                         modifier = Modifier
                             .size(50.dp)
                             .background(LightBlueAvatar, CircleShape)
-                            .clip(CircleShape),
+                            .clip(CircleShape)
+                            .clickable { navController.navigateSafe("friend_profile/${friend.id}") },
                         contentAlignment = Alignment.Center
                     ) {
                         if (!friend.avatar_url.isNullOrEmpty()) {
@@ -273,6 +278,7 @@ private fun AddFriendsTab(
     allFriendships: List<Friendship>,
     userId: String,
     isSearching: Boolean,
+    navController: NavController,
     onSearchQueryChange: (String) -> Unit,
     onAddFriend: (String) -> Unit,
     onAcceptFriend: (String) -> Unit
@@ -337,7 +343,8 @@ private fun AddFriendsTab(
                             modifier = Modifier
                                 .size(50.dp)
                                 .background(LightBlueAvatar, CircleShape)
-                                .clip(CircleShape),
+                                .clip(CircleShape)
+                                .clickable { navController.navigateSafe("friend_profile/${user.id}") },
                             contentAlignment = Alignment.Center
                         ) {
                             if (!user.avatar_url.isNullOrEmpty()) {
@@ -430,6 +437,7 @@ private fun AddFriendsTab(
 @Composable
 private fun RequestsTab(
     requests: List<FriendshipWithProfile>,
+    navController: NavController,
     onAccept: (String) -> Unit,
     onDecline: (String) -> Unit
 ) {
@@ -464,7 +472,12 @@ private fun RequestsTab(
                         modifier = Modifier
                             .size(50.dp)
                             .background(LightBlueAvatar, CircleShape)
-                            .clip(CircleShape),
+                            .clip(CircleShape)
+                            .clickable {
+                                if (sender != null) {
+                                    navController.navigateSafe("friend_profile/${sender.id}")
+                                }
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         if (!sender?.avatar_url.isNullOrEmpty()) {

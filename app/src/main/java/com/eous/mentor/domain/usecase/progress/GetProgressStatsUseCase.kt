@@ -11,7 +11,7 @@ class GetProgressStatsUseCase(
     private val userRepository: UserRepository,
     private val chatRepository: ChatRepository
 ) {
-    suspend operator fun invoke(userId: String): Result<DashboardStats> = runCatching {
+    suspend operator fun invoke(userId: String, recordActivity: Boolean = true): Result<DashboardStats> = runCatching {
         if (userId.isEmpty()) throw IllegalArgumentException("User ID is empty")
 
         // 1. Fetch profile first to check name
@@ -83,7 +83,7 @@ class GetProgressStatsUseCase(
             val sciencePct = computedSubjectStats.find { it.name.equals("Science", ignoreCase = true) }?.percentage ?: 0
 
             // 3. Record user daily activity and retrieve persistent DB streak
-            val recordedProfile = userRepository.recordUserActivity(userId).getOrNull()
+            val recordedProfile = if (recordActivity) userRepository.recordUserActivity(userId).getOrNull() else null
             val streak = recordedProfile?.current_streak ?: profile?.current_streak ?: 0
 
             val totalXp = totalQueries * 10 + libraryItems * 20

@@ -161,7 +161,8 @@ fun PersonalScreen(
                                  navController = navController,
                                  displayName = state.displayName,
                                  totalQueries = state.dashboardStats?.totalQueries ?: 0,
-                                 libraryItems = state.dashboardStats?.libraryItems ?: 0
+                                 libraryItems = state.dashboardStats?.libraryItems ?: 0,
+                                 friendsWithXp = state.friendsWithXp
                              )
 
                              Spacer(modifier = Modifier.height(24.dp))
@@ -744,7 +745,8 @@ private fun MyFriendsSection(
                         modifier = Modifier
                             .size(60.dp)
                             .background(Color(0xFFDDE0FF), CircleShape)
-                            .clip(CircleShape),
+                            .clip(CircleShape)
+                            .clickable { navController.navigateSafe("friend_profile/${friend.id}") },
                         contentAlignment = Alignment.Center
                     ) {
                         if (!friend.avatar_url.isNullOrEmpty()) {
@@ -837,17 +839,30 @@ private fun LeaderboardsSection(
     navController: NavController,
     displayName: String,
     totalQueries: Int,
-    libraryItems: Int
+    libraryItems: Int,
+    friendsWithXp: List<Pair<Profile, Int>>
 ) {
     val userXp = totalQueries * 10 + libraryItems * 20
     val userInitial = displayName.trim().split("\\s+".toRegex()).lastOrNull()?.firstOrNull()?.uppercase() ?: "U"
 
-    val leaderboardList = remember(displayName, userXp) {
-        val list = mutableListOf(
-            com.eous.mentor.features.leaderboard.LeaderboardEntry(name = displayName, xp = userXp, initials = userInitial, isCurrentUser = true),
-            com.eous.mentor.features.leaderboard.LeaderboardEntry(name = "Truong Nguyen", xp = 170, initials = "N", isCurrentUser = false),
-            com.eous.mentor.features.leaderboard.LeaderboardEntry(name = "Trieu Hoang", xp = 150, initials = "T", isCurrentUser = false)
-        )
+    val leaderboardList = remember(displayName, userXp, friendsWithXp) {
+        val list = mutableListOf<com.eous.mentor.features.leaderboard.LeaderboardEntry>()
+        list.add(com.eous.mentor.features.leaderboard.LeaderboardEntry(id = "", name = displayName, xp = userXp, initials = userInitial, isCurrentUser = true))
+        
+        friendsWithXp.forEach { (friend, xp) ->
+            val friendName = friend.display_name ?: friend.email?.substringBefore("@") ?: "User"
+            val friendInitial = friendName.trim().split("\\s+".toRegex()).lastOrNull()?.firstOrNull()?.uppercase() ?: "U"
+            list.add(
+                com.eous.mentor.features.leaderboard.LeaderboardEntry(
+                    id = friend.id,
+                    name = friendName,
+                    xp = xp,
+                    initials = friendInitial,
+                    avatarUrl = friend.avatar_url,
+                    isCurrentUser = false
+                )
+            )
+        }
         list.sortByDescending { it.xp }
         list
     }
@@ -907,16 +922,26 @@ private fun LeaderboardCompactItem(entry: com.eous.mentor.features.leaderboard.L
         Box(
             modifier = Modifier
                 .size(60.dp)
-                .background(Color(0xFFDDE0FF), CircleShape),
+                .background(Color(0xFFDDE0FF), CircleShape)
+                .clip(CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = entry.initials,
-                color = Color(0xFF5B29A2),
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = Inter
-            )
+            if (!entry.avatarUrl.isNullOrEmpty()) {
+                AsyncImage(
+                    model = entry.avatarUrl,
+                    contentDescription = "User Avatar",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Text(
+                    text = entry.initials,
+                    color = Color(0xFF5B29A2),
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = Inter
+                )
+            }
         }
 
         Text(

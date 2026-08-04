@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 data class LeaderboardEntry(
+    val id: String,
     val name: String,
     val xp: Int,
     val initials: String,
@@ -23,6 +24,7 @@ data class LeaderboardEntry(
 
 data class LeaderboardsState(
     val entries: List<LeaderboardEntry> = emptyList(),
+    val hasFriends: Boolean = false,
     val isLoading: Boolean = false,
     val errorMessage: String? = null
 )
@@ -80,12 +82,12 @@ class LeaderboardsViewModel(
 
                 // Create entries list
                 val list = mutableListOf<LeaderboardEntry>()
-                list.add(LeaderboardEntry(name = name, xp = userXp, initials = userInitial, avatarUrl = avatarUrl, isCurrentUser = true))
+                list.add(LeaderboardEntry(id = userId, name = name, xp = userXp, initials = userInitial, avatarUrl = avatarUrl, isCurrentUser = true))
 
                 // Fetch and add each real friend's XP
                 friends.forEach { friend ->
                     val friendStats = withContext(Dispatchers.IO) {
-                        getProgressStatsUseCase(friend.id).getOrNull()
+                        getProgressStatsUseCase(friend.id, recordActivity = false).getOrNull()
                     }
                     val friendQueries = friendStats?.totalQueries ?: 0
                     val friendBookmarks = friendStats?.libraryItems ?: 0
@@ -94,6 +96,7 @@ class LeaderboardsViewModel(
                         .trim().split("\\s+".toRegex()).lastOrNull()?.firstOrNull()?.uppercase() ?: "U"
                     list.add(
                         LeaderboardEntry(
+                            id = friend.id,
                             name = friend.display_name ?: friend.email?.substringBefore("@") ?: "User",
                             xp = friendXp,
                             initials = friendInitial,
@@ -103,25 +106,13 @@ class LeaderboardsViewModel(
                     )
                 }
 
-                // Fill up with fake users if leaderboard has less than 3 people
-                if (list.size < 3) {
-                    val fakeUsers = listOf(
-                        LeaderboardEntry(name = "Truong Nguyen", xp = 170, initials = "N", isCurrentUser = false),
-                        LeaderboardEntry(name = "Trieu Hoang", xp = 150, initials = "T", isCurrentUser = false)
-                    )
-                    fakeUsers.forEach { fake ->
-                        if (list.size < 3 && list.none { it.name == fake.name }) {
-                            list.add(fake)
-                        }
-                    }
-                }
-
                 // Sort by XP descending
                 list.sortByDescending { it.xp }
 
                 _state.update {
                     it.copy(
                         entries = list,
+                        hasFriends = friends.isNotEmpty(),
                         isLoading = false
                     )
                 }

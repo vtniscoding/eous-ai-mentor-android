@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.eous.mentor.R
+import com.eous.mentor.core.navigation.navigateSafe
 import com.eous.mentor.core.ui.components.PreparingLoadingScreen
 import com.eous.mentor.core.ui.theme.Inter
 
@@ -117,18 +118,68 @@ fun LeaderboardsScreen(
                             RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
                         )
                 ) {
-                    // Header Bar (Rankings | XP Points)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                HeaderGray,
-                                RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
+                    if (!state.hasFriends) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 32.dp, vertical = 40.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_chest),
+                                contentDescription = null,
+                                tint = PrimaryPurple.copy(alpha = 0.7f),
+                                modifier = Modifier.size(80.dp)
                             )
-                            .padding(horizontal = 24.dp, vertical = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "No friends on Leaderboards yet!",
+                                color = Color.Black,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = Inter,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Add friends to start competing, comparing XP points, and climbing the ranks together!",
+                                color = TextDarkGray,
+                                fontSize = 14.sp,
+                                fontFamily = Inter,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Button(
+                                onClick = { navController.navigateSafe("friends") },
+                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                            ) {
+                                Text(
+                                    text = "Add Friends",
+                                    color = Color.White,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = Inter
+                                )
+                            }
+                        }
+                    } else {
+                        // Header Bar (Rankings | XP Points)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    HeaderGray,
+                                    RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
+                                )
+                                .padding(horizontal = 24.dp, vertical = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                         Text(
                             text = "Rankings",
                             color = TextDarkGray,
@@ -176,7 +227,10 @@ fun LeaderboardsScreen(
                                     modifier = Modifier
                                         .size(50.dp)
                                         .background(LightBlueAvatar, CircleShape)
-                                        .clip(CircleShape),
+                                        .clip(CircleShape)
+                                        .clickable(enabled = !entry.isCurrentUser) {
+                                            navController.navigateSafe("friend_profile/${entry.id}")
+                                        },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     if (!entry.avatarUrl.isNullOrEmpty()) {
@@ -232,4 +286,5 @@ fun LeaderboardsScreen(
             }
         }
     }
+}
 }
