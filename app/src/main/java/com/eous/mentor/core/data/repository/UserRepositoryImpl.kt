@@ -40,7 +40,10 @@ class UserRepositoryImpl : UserRepository {
 
     override suspend fun getBookmarks(userId: String): Result<List<Bookmark>> {
         return try {
-            val bookmarks = supabase.from("bookmarks").select().decodeList<Bookmark>()
+            val bookmarks =
+                    supabase.from("bookmarks")
+                            .select { filter { eq("user_id", userId) } }
+                            .decodeList<Bookmark>()
             Result.success(bookmarks)
         } catch (e: Throwable) {
             Result.failure(e)
@@ -363,6 +366,18 @@ class UserRepositoryImpl : UserRepository {
             val friends = sentFriendships.mapNotNull { it.receiver } +
                           receivedFriendships.mapNotNull { it.sender }
             Result.success(friends)
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateSessionId(userId: String, sessionId: String?): Result<Unit> {
+        return try {
+            supabase.from("profiles").update({ set("current_session_id", sessionId) }) {
+                filter { eq("id", userId) }
+            }
+            Result.success(Unit)
         } catch (e: Throwable) {
             e.printStackTrace()
             Result.failure(e)

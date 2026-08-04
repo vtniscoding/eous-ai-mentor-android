@@ -54,6 +54,7 @@ import com.eous.mentor.features.settings.SettingsScreen
 import com.eous.mentor.features.profile.ProfileScreen
 import com.eous.mentor.features.progress.ProgressScreen
 import com.eous.mentor.features.progress.ProgressViewModel
+import kotlinx.coroutines.launch
 
 private fun getScreenIndex(route: String): Int {
     return when (route) {
@@ -91,10 +92,67 @@ fun MainScreen(
     val personalState by personalViewModel.state.collectAsState()
     val progressState by progressViewModel.state.collectAsState()
 
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
     LaunchedEffect(personalState.profile) {
         val profile = personalState.profile
-        if (profile != null && !profile.onboarding_completed) {
-            viewModel.navigateTo("profile")
+        if (profile != null) {
+            if (!profile.onboarding_completed) {
+                viewModel.navigateTo("profile")
+            } else {
+                val localSessionId = com.eous.mentor.di.RepositoryProvider.sessionRepository.getLocalSessionId(context)
+                val remoteSessionId = profile.current_session_id
+                if (!remoteSessionId.isNullOrEmpty()) {
+                    if (localSessionId.isEmpty() || localSessionId != remoteSessionId) {
+                        val currentAvatarUrl = profile.avatar_url
+                        val currentEmail = profile.email ?: com.eous.mentor.di.RepositoryProvider.sessionRepository.getCurrentUserEmail()
+                        com.eous.mentor.di.RepositoryProvider.sessionRepository.clearLocalSessionId(context)
+                        
+                        homeViewModel.logout(
+                            onSuccess = {
+                                if (!currentEmail.isNullOrBlank()) {
+                                    SavedAccountsRepository.saveAccount(
+                                        context,
+                                        com.eous.mentor.domain.model.SavedAccount(
+                                            email = currentEmail,
+                                            avatarUrl = currentAvatarUrl
+                                        )
+                                    )
+                                }
+                                Toast.makeText(
+                                    context,
+                                    "Session expired: Account logged in on another device!",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                val savedAccounts = SavedAccountsRepository.getSavedAccounts(context)
+                                val targetRoute = if (savedAccounts.isNotEmpty()) "relogin" else "login"
+                                navController.navigate(targetRoute) {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            },
+                            onError = {
+                                Toast.makeText(
+                                    context,
+                                    "Session expired. Logged out!",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                val savedAccounts = SavedAccountsRepository.getSavedAccounts(context)
+                                val targetRoute = if (savedAccounts.isNotEmpty()) "relogin" else "login"
+                                navController.navigate(targetRoute) {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+                } else {
+                    val newSessionId = java.util.UUID.randomUUID().toString()
+                    com.eous.mentor.di.RepositoryProvider.sessionRepository.saveLocalSessionId(context, newSessionId)
+                    scope.launch {
+                        com.eous.mentor.di.RepositoryProvider.userRepository.updateSessionId(userId, newSessionId)
+                    }
+                }
+            }
         }
     }
 

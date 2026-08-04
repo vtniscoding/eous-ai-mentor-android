@@ -43,5 +43,6 @@ interface UserRepository {
     suspend fun declineOrRemoveFriendship(senderId: String, receiverId: String): Result<Unit>
     suspend fun getPendingRequests(userId: String): Result<List<FriendshipWithProfile>>
     suspend fun getFriendsList(userId: String): Result<List<Profile>>
+    suspend fun updateSessionId(userId: String, sessionId: String?): Result<Unit>
 }
 

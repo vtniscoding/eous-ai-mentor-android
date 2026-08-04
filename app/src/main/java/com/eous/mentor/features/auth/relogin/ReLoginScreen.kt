@@ -191,13 +191,19 @@ fun ReLoginScreen(
                                             scope.launch {
                                                 val res = loginUseCase(account.email, account.password)
                                                 loggingInEmail = null
-                                                if (res.isSuccess) {
-                                                    Toast.makeText(
-                                                        context,
-                                                        "Welcome back, ${account.email}!",
-                                                        Toast.LENGTH_SHORT
-                                                    ).show()
-                                                    onLoginSuccess()
+                                                 if (res.isSuccess) {
+                                                     val currentUid = com.eous.mentor.di.RepositoryProvider.sessionRepository.getCurrentUserId()
+                                                     if (!currentUid.isNullOrEmpty()) {
+                                                         val newSessionId = java.util.UUID.randomUUID().toString()
+                                                         com.eous.mentor.di.RepositoryProvider.sessionRepository.saveLocalSessionId(context, newSessionId)
+                                                         com.eous.mentor.di.RepositoryProvider.userRepository.updateSessionId(currentUid, newSessionId)
+                                                     }
+                                                     Toast.makeText(
+                                                         context,
+                                                         "Welcome back, ${account.email}!",
+                                                         Toast.LENGTH_SHORT
+                                                     ).show()
+                                                     onLoginSuccess()
                                                 } else {
                                                     val msg = res.exceptionOrNull()
                                                         ?.let { friendlyAuthError(it) }

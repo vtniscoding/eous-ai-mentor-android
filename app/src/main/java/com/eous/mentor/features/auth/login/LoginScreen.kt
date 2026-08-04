@@ -199,10 +199,14 @@ fun LoginFormScreen(
                                     password = state.password
                                 )
                             )
-                            // Fetch avatar asynchronously to enrich saved account
+                            // Fetch avatar and set new session ID asynchronously
                             scope.launch {
                                 val currentUid = com.eous.mentor.di.RepositoryProvider.sessionRepository.getCurrentUserId()
                                 if (!currentUid.isNullOrEmpty()) {
+                                    val newSessionId = java.util.UUID.randomUUID().toString()
+                                    com.eous.mentor.di.RepositoryProvider.sessionRepository.saveLocalSessionId(context, newSessionId)
+                                    com.eous.mentor.di.RepositoryProvider.userRepository.updateSessionId(currentUid, newSessionId)
+
                                     val avatarUrl = com.eous.mentor.di.RepositoryProvider.userRepository.getProfile(currentUid).getOrNull()?.avatar_url
                                     if (!avatarUrl.isNullOrEmpty()) {
                                         SavedAccountsRepository.saveAccount(

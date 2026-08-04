@@ -37,6 +37,7 @@ import androidx.navigation.NavController
 import com.eous.mentor.core.navigation.navigateSafe
 import com.eous.mentor.R
 import com.eous.mentor.core.ui.theme.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun RegisterFormScreen(
@@ -46,6 +47,7 @@ fun RegisterFormScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     Box(
         modifier = Modifier
@@ -248,6 +250,15 @@ fun RegisterFormScreen(
                                             password = state.password
                                         )
                                     )
+                                    // Generate and save session ID
+                                    scope.launch {
+                                        val currentUid = com.eous.mentor.di.RepositoryProvider.sessionRepository.getCurrentUserId()
+                                        if (!currentUid.isNullOrEmpty()) {
+                                            val newSessionId = java.util.UUID.randomUUID().toString()
+                                            com.eous.mentor.di.RepositoryProvider.sessionRepository.saveLocalSessionId(context, newSessionId)
+                                            com.eous.mentor.di.RepositoryProvider.userRepository.updateSessionId(currentUid, newSessionId)
+                                        }
+                                    }
                                     Toast.makeText(context, "Registration successful!", Toast.LENGTH_SHORT).show()
                                     navController.navigateSafe("dashboard") {
                                         popUpTo("intro") { inclusive = true }

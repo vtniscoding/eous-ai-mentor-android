@@ -34,4 +34,19 @@ class SessionRepositoryImpl : SessionRepository {
             null
         }
     }
+
+    override fun getLocalSessionId(context: android.content.Context): String {
+        val prefs = context.getSharedPreferences("eous_session_prefs", android.content.Context.MODE_PRIVATE)
+        return prefs.getString("local_session_id", "") ?: ""
+    }
+
+    override fun saveLocalSessionId(context: android.content.Context, sessionId: String) {
+        val prefs = context.getSharedPreferences("eous_session_prefs", android.content.Context.MODE_PRIVATE)
+        prefs.edit().putString("local_session_id", sessionId).apply()
+    }
+
+    override fun clearLocalSessionId(context: android.content.Context) {
+        val prefs = context.getSharedPreferences("eous_session_prefs", android.content.Context.MODE_PRIVATE)
+        prefs.edit().remove("local_session_id").apply()
+    }
 }
