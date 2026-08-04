@@ -37,7 +37,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.eous.mentor.core.ui.components.AnalyzingLoadingScreen
+import com.eous.mentor.core.ui.components.PreparingQuizzScreen
 import com.eous.mentor.core.ui.theme.Inter
 import com.eous.mentor.domain.model.Quiz
 import com.eous.mentor.domain.model.QuizQuestion
@@ -68,13 +68,16 @@ fun QuizzesScreen(userId: String, onBack: () -> Unit, viewModel: QuizzesViewMode
             }
 
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF6F6F8))) {
-        Column(
-                modifier =
-                        Modifier.fillMaxSize()
-                                .statusBarsPadding()
-                                .navigationBarsPadding()
-                                .padding(horizontal = 20.dp)
-        ) {
+        if (state.isGeneratingQuiz) {
+            PreparingQuizzScreen(message = "Preparing Quiz...")
+        } else {
+            Column(
+                    modifier =
+                            Modifier.fillMaxSize()
+                                    .statusBarsPadding()
+                                    .navigationBarsPadding()
+                                    .padding(horizontal = 20.dp)
+            ) {
             Spacer(modifier = Modifier.height(12.dp))
 
             // ---- 1. Top Bar Header (Standardized with ProgressScreen) ----
@@ -213,6 +216,7 @@ fun QuizzesScreen(userId: String, onBack: () -> Unit, viewModel: QuizzesViewMode
             }
         }
     }
+}
 
     // ---- Active Quiz Player & Results Dialog ----
     val activeQuiz = state.activeQuiz
@@ -922,7 +926,7 @@ private fun CreateQuizWizardDialog(
     ) {
         Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFFF8FAFC)) {
             if (isGenerating) {
-                AnalyzingLoadingScreen()
+                PreparingQuizzScreen()
             } else {
                 Column(
                         modifier =

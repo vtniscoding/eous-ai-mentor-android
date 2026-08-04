@@ -10,7 +10,8 @@ data class MainScreenState(
         val currentScreen: String = "dashboard",
         val chatInitialQuestion: String = "",
         val toolsInitialTab: String = "",
-        val isMainScreenOpen: Boolean = false
+        val isMainScreenOpen: Boolean = false,
+        val chatBackDestination: String? = null
 )
 
 class MainScreenViewModel : ViewModel() {
@@ -20,13 +21,15 @@ class MainScreenViewModel : ViewModel() {
     fun navigateTo(
         screen: String,
         chatQuestion: String = "",
-        toolsTab: String = ""
+        toolsTab: String = "",
+        chatBackDest: String? = null
     ) {
         _state.update {
             it.copy(
                     currentScreen = screen,
                     chatInitialQuestion = chatQuestion,
                     toolsInitialTab = toolsTab,
+                    chatBackDestination = chatBackDest,
                     isMainScreenOpen = false
             )
         }

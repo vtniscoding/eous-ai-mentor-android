@@ -404,9 +404,16 @@ fun RichChatThreadView(
             }
             @keyframes spin { to { transform: rotate(360deg); } }
             
+            .suggestion-title {
+              color: #64748B;
+              font-size: 13px;
+              font-weight: 700;
+              margin-top: 16px;
+              margin-bottom: 8px;
+            }
             .support-chips {
               display: flex; gap: 8px; overflow-x: auto;
-              padding: 20px 0 10px 0;
+              padding: 4px 0 10px 0;
             }
             .support-chips::-webkit-scrollbar { display: none; }
             .support-chip {
@@ -487,7 +494,8 @@ fun RichChatThreadView(
                       }
                       
                       if (pair.showSupportChips) {
-                          html += `<div class="support-chips">
+                          html += `<div class="suggestion-title">Suggestion:</div>
+                                   <div class="support-chips">
                                      <div class="support-chip" onclick="onChipClick('Simplify the explanation')">Simplify Explanation</div>
                                      <div class="support-chip" onclick="onChipClick('Give another solution')">Another Solution</div>
                                      <div class="support-chip" onclick="onChipClick('Generate a practice quiz on this topic')">Practice with Quizzes</div>

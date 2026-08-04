@@ -43,6 +43,7 @@ import com.eous.mentor.features.alert.AlertScreen
 import com.eous.mentor.features.timer.TimerSection
 import com.eous.mentor.features.quizzes.QuizzesSection
 import com.eous.mentor.features.quizzes.QuizzesScreen
+import com.eous.mentor.features.quizzes.QuizzesViewModel
 import com.eous.mentor.features.flashcards.FlashcardsSection
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
@@ -82,6 +83,7 @@ fun MainScreen(
     val libraryViewModel = remember(userId) { LibraryViewModel(userId = userId) }
     val personalViewModel = remember(userId) { com.eous.mentor.features.personal.PersonalViewModel(userId = userId) }
     val progressViewModel = remember(userId) { ProgressViewModel(userId = userId) }
+    val quizzesViewModel = remember(userId) { QuizzesViewModel() }
 
     val homeState by homeViewModel.state.collectAsState()
     val chatState by chatViewModel.state.collectAsState()
@@ -170,13 +172,31 @@ fun MainScreen(
                             },
                             onNavigateToQuizzes = {
                                 viewModel.navigateTo("quizzes")
+                            },
+                            onBack = state.chatBackDestination?.let { dest ->
+                                {
+                                    chatViewModel.startNewChat()
+                                    viewModel.navigateTo(dest)
+                                }
                             }
                         )
                     }
                     "library" -> {
                         Library(
-                            onMenuClick = {},
                             userId = userId,
+                            onBack = { viewModel.navigateTo("dashboard") },
+                            onNavigateToChatSession = { session ->
+                                chatViewModel.selectSession(session)
+                                viewModel.navigateTo("chat", chatBackDest = "library")
+                            },
+                            onPracticeClick = { subject ->
+                                quizzesViewModel.createQuizWithAi(
+                                    userId = userId,
+                                    topic = subject,
+                                    prompt = "Review $subject"
+                                )
+                                viewModel.navigateTo("quizzes")
+                            },
                             viewModel = libraryViewModel
                         )
                     }
@@ -196,7 +216,8 @@ fun MainScreen(
                     "quizzes" -> {
                         QuizzesScreen(
                             userId = userId,
-                            onBack = { viewModel.navigateTo("dashboard") }
+                            onBack = { viewModel.navigateTo("dashboard") },
+                            viewModel = quizzesViewModel
                         )
                     }
                     "flashcards" -> {

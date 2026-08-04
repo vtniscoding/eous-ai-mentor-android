@@ -447,12 +447,17 @@ class ChatViewModel(
                                                 }
 
                                                 // 4. Insert AI response into DB
+                                                val replyContent = if (createdQuizId != null) {
+                                                    "I have designed the questions above to help you review your knowledge. Don't hesitate to try your best, as every mistake is an opportunity to learn even more deeply. Happy learning, and keep up your eager spirit!"
+                                                } else {
+                                                    aiResponse.reply
+                                                }
                                                 val aiMsg =
                                                         ChatMessage(
                                                                 user_id = userId,
                                                                 session_id = session.id,
                                                                 role = "ai",
-                                                                content = aiResponse.reply,
+                                                                content = replyContent,
                                                                 subject = aiResponse.subject,
                                                                 quiz_id = createdQuizId
                                                         )

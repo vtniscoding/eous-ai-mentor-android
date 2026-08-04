@@ -18,7 +18,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
@@ -117,7 +117,8 @@ fun Chat(
         initialQuestion: String = "",
         viewModel: ChatViewModel,
         onNavigateToSearch: () -> Unit = {},
-        onNavigateToQuizzes: () -> Unit = {}
+        onNavigateToQuizzes: () -> Unit = {},
+        onBack: (() -> Unit)? = null
 ) {
         val state by viewModel.state.collectAsState()
         val context = LocalContext.current
@@ -180,7 +181,13 @@ fun Chat(
 
         // Handle system back press
         if (state.activeSession != null) {
-                BackHandler { viewModel.startNewChat() }
+                BackHandler {
+                        if (onBack != null) {
+                                onBack()
+                        } else {
+                                viewModel.startNewChat()
+                        }
+                }
         }
 
         Box(
@@ -216,7 +223,8 @@ fun Chat(
                                 AnswerOutputContent(
                                         state = state,
                                         viewModel = viewModel,
-                                        onNavigateToQuizzes = onNavigateToQuizzes
+                                        onNavigateToQuizzes = onNavigateToQuizzes,
+                                        onBack = onBack
                                 )
                         }
 
@@ -559,7 +567,8 @@ fun ChatLandingContent(
 fun AnswerOutputContent(
         state: ChatState,
         viewModel: ChatViewModel,
-        onNavigateToQuizzes: () -> Unit
+        onNavigateToQuizzes: () -> Unit,
+        onBack: (() -> Unit)? = null
 ) {
         val qaPairs =
                 remember(state.messages) {
@@ -592,22 +601,25 @@ fun AnswerOutputContent(
         ) {
                 // Header Bar
                 Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                 ) {
                         IconButton(
-                                onClick = { viewModel.startNewChat() },
-                                modifier =
-                                        Modifier.size(32.dp)
-                                                .background(Color.White, CircleShape)
-                                                .border(1.dp, Color(0xFFE2E8F0), CircleShape)
+                                onClick = {
+                                        if (onBack != null) {
+                                                onBack()
+                                        } else {
+                                                viewModel.startNewChat()
+                                        }
+                                },
+                                modifier = Modifier.size(36.dp)
                         ) {
                                 Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                        imageVector = Icons.Default.ChevronLeft,
                                         contentDescription = "Back",
                                         tint = Color(0xFF1E293B),
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(28.dp)
                                 )
                         }
 
@@ -629,27 +641,39 @@ fun AnswerOutputContent(
                         val latestAiMsg = qaPairs.lastOrNull()?.second
                         val isBookmarked = latestAiMsg?.is_bookmarked == true
 
-                        IconButton(
-                                onClick = {
-                                        if (latestAiMsg != null) {
-                                                viewModel.toggleBookmark(latestAiMsg)
+                        Surface(
+                                modifier = Modifier
+                                        .clickable {
+                                                if (latestAiMsg != null) {
+                                                        viewModel.toggleBookmark(latestAiMsg)
+                                                }
                                         }
-                                },
-                                modifier =
-                                        Modifier.size(32.dp)
-                                                .background(Color.White, CircleShape)
-                                                .border(1.dp, Color(0xFFE2E8F0), CircleShape)
+                                        .border(
+                                                width = 1.dp,
+                                                color = if (isBookmarked) Color(0xFFDDD6FE) else Color(0xFFE2E8F0),
+                                                shape = RoundedCornerShape(20.dp)
+                                        ),
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (isBookmarked) Color(0xFFF5F3FF) else Color.White
                         ) {
-                                Icon(
-                                        imageVector =
-                                                if (isBookmarked) Icons.Default.Bookmark
-                                                else Icons.Default.BookmarkBorder,
-                                        contentDescription = "Bookmark",
-                                        tint =
-                                                if (isBookmarked) Color(0xFF7F43D4)
-                                                else Color(0xFF64748B),
-                                        modifier = Modifier.size(18.dp)
-                                )
+                                Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                        Icon(
+                                                imageVector = if (isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                                contentDescription = "Bookmark",
+                                                tint = if (isBookmarked) Color(0xFF7F43D4) else Color(0xFF64748B),
+                                                modifier = Modifier.size(16.dp)
+                                        )
+                                        Text(
+                                                text = if (isBookmarked) "Marked" else "Mark",
+                                                color = if (isBookmarked) Color(0xFF7F43D4) else Color(0xFF64748B),
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold
+                                        )
+                                }
                         }
                 }
 
@@ -949,6 +973,13 @@ fun AiAnswerContent(
                 // Render support chips if active and last
                 if (showSupportChips) {
                         Spacer(modifier = Modifier.height(20.dp))
+                        Text(
+                                text = "Suggestion:",
+                                color = Color(0xFF64748B),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                        )
                         Row(
                                 modifier =
                                         Modifier.fillMaxWidth()

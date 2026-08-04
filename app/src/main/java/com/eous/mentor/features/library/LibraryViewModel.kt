@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eous.mentor.di.RepositoryProvider
 import com.eous.mentor.domain.model.ChatMessage
+import com.eous.mentor.domain.model.ChatSession
 import com.eous.mentor.domain.repository.ChatRepository
 import com.eous.mentor.domain.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,6 +12,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 class LibraryViewModel(
     private val userId: String = "",
@@ -20,8 +25,6 @@ class LibraryViewModel(
     private val _state = MutableStateFlow(LibraryState())
     val state: StateFlow<LibraryState> = _state.asStateFlow()
 
-
-
     init {
         if (userId.isNotEmpty()) loadLibraryData(userId)
     }
@@ -29,17 +32,38 @@ class LibraryViewModel(
     fun loadLibraryData(userId: String) {
         _state.update { it.copy(isLoading = true) }
         viewModelScope.launch {
-            // 1. Fetch Profile for user subjects
-            val profileResult = userRepository.getProfile(userId)
-            val userSubjects = profileResult.getOrNull()?.subjects ?: emptyList()
-            
-            // 2. Fetch bookmarked messages
-            chatRepository.getBookmarkedMessages(userId)
-                .onSuccess { msgs ->
+            // 1. Fetch bookmarked messages
+            val bookmarksResult = chatRepository.getBookmarkedMessages(userId)
+            val bookmarks = bookmarksResult.getOrDefault(emptyList())
+
+            // 2. Fetch history chat sessions
+            chatRepository.getSessions(userId)
+                .onSuccess { sessionsList ->
+                    // Extract unique subjects from user's sessions to dynamically update the filters
+                    val uniqueSubjects = sessionsList
+                        .map { it.subject }
+                        .filter { it.isNotBlank() }
+                        .distinct()
+
+                    // Compute dynamic weekly suggestion stats based on active subjects (questions >= 3)
+                    val now = System.currentTimeMillis()
+                    val oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000L
+                    val weeklySessions = sessionsList.filter { session ->
+                        val time = parseCreatedAt(session.created_at) ?: 0L
+                        time >= oneWeekAgo
+                    }
+                    val subjectCounts = weeklySessions.groupBy { it.subject }.mapValues { it.value.size }
+                    val mostFrequentSubject = subjectCounts.filterKeys { it.isNotBlank() }.maxByOrNull { it.value }
+                    val practiceSubject = mostFrequentSubject?.key ?: "Math"
+                    val practiceQuestionCount = mostFrequentSubject?.value ?: 0
+
                     _state.update {
                         it.copy(
-                            subjects = userSubjects,
-                            bookmarkedMessages = msgs,
+                            subjects = uniqueSubjects,
+                            bookmarkedMessages = bookmarks,
+                            sessions = sessionsList,
+                            practiceSubject = practiceSubject,
+                            practiceQuestionCount = practiceQuestionCount,
                             isLoading = false
                         )
                     }
@@ -47,7 +71,7 @@ class LibraryViewModel(
                 .onFailure { error ->
                     _state.update {
                         it.copy(
-                            subjects = userSubjects,
+                            bookmarkedMessages = bookmarks,
                             isLoading = false,
                             errorMessage = error.message
                         )
@@ -56,79 +80,68 @@ class LibraryViewModel(
         }
     }
 
-    fun selectSubject(subject: String?) {
-        _state.update { it.copy(selectedSubject = subject) }
-    }
-
-    fun addSubject(userId: String, name: String) {
-        val trimmedName = name.trim()
-        if (trimmedName.isEmpty()) return
-        
-        val currentSubjects = _state.value.subjects
-        if (currentSubjects.any { it.equals(trimmedName, ignoreCase = true) }) return
-        
-        val updated = currentSubjects + trimmedName
-        viewModelScope.launch {
-            userRepository.updateSubjects(userId, updated)
-                .onSuccess {
-                    _state.update { it.copy(subjects = updated) }
-                }
-                .onFailure { error ->
-                    _state.update { it.copy(errorMessage = error.message) }
-                }
+    private fun parseCreatedAt(createdAt: String?): Long? {
+        if (createdAt.isNullOrEmpty()) return null
+        return try {
+            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
+            sdf.timeZone = TimeZone.getTimeZone("UTC")
+            sdf.parse(createdAt.take(19))?.time
+        } catch (e: Exception) {
+            null
         }
     }
 
-    fun renameSubject(userId: String, oldName: String, newName: String) {
-        val trimmedNew = newName.trim()
-        if (trimmedNew.isEmpty() || trimmedNew == oldName) return
-        
-        val currentSubjects = _state.value.subjects
-        if (currentSubjects.any { it.equals(trimmedNew, ignoreCase = true) && !it.equals(oldName, ignoreCase = true) }) return
-        
-        val updated = currentSubjects.map { if (it == oldName) trimmedNew else it }
-        viewModelScope.launch {
-            userRepository.updateSubjects(userId, updated)
-                .onSuccess {
-                    val newSelected = if (_state.value.selectedSubject == oldName) trimmedNew else _state.value.selectedSubject
-                    _state.update { it.copy(subjects = updated, selectedSubject = newSelected) }
-                }
-                .onFailure { error ->
-                    _state.update { it.copy(errorMessage = error.message) }
-                }
-        }
+    fun setSearchQuery(query: String) {
+        _state.update { it.copy(searchQuery = query) }
     }
 
-    fun removeSubject(userId: String, name: String) {
-        val currentSubjects = _state.value.subjects
-        val updated = currentSubjects.filter { it != name }
-        viewModelScope.launch {
-            userRepository.updateSubjects(userId, updated)
-                .onSuccess {
-                    val newSelected = if (_state.value.selectedSubject == name) null else _state.value.selectedSubject
-                    _state.update { it.copy(subjects = updated, selectedSubject = newSelected) }
-                }
-                .onFailure { error ->
-                    _state.update { it.copy(errorMessage = error.message) }
-                }
-        }
+    fun selectFilter(filter: String) {
+        _state.update { it.copy(selectedFilter = filter) }
     }
 
-
-    fun removeBookmark(message: ChatMessage, userId: String) {
-        val msgId = message.id ?: return
+    fun toggleBookmarkFromLibrary(
+        session: ChatSession,
+        isCurrentlyBookmarked: Boolean,
+        bookmarkedMsg: ChatMessage?,
+        userId: String
+    ) {
+        val sessionId = session.id ?: return
         viewModelScope.launch {
-            chatRepository.toggleBookmark(
-                messageId = msgId,
-                userId = userId,
-                isBookmarked = false
-            ).onSuccess {
-                _state.update { state ->
-                    val updatedMsgs = state.bookmarkedMessages.filter { it.id != msgId }
-                    state.copy(bookmarkedMessages = updatedMsgs)
+            if (isCurrentlyBookmarked) {
+                val msgId = bookmarkedMsg?.id ?: return@launch
+                chatRepository.toggleBookmark(
+                    messageId = msgId,
+                    userId = userId,
+                    isBookmarked = false
+                ).onSuccess {
+                    loadLibraryData(userId)
+                }.onFailure { error ->
+                    _state.update { it.copy(errorMessage = error.message) }
                 }
-            }.onFailure { error ->
-                _state.update { it.copy(errorMessage = error.message) }
+            } else {
+                // Fetch messages for session to find the last AI response
+                chatRepository.getMessages(sessionId)
+                    .onSuccess { messages ->
+                        val latestAiMsg = messages.lastOrNull { it.role == "ai" }
+                        if (latestAiMsg != null) {
+                            val msgId = latestAiMsg.id ?: return@onSuccess
+                            chatRepository.toggleBookmark(
+                                messageId = msgId,
+                                userId = userId,
+                                isBookmarked = true,
+                                folder = session.subject
+                            ).onSuccess {
+                                loadLibraryData(userId)
+                            }.onFailure { error ->
+                                _state.update { it.copy(errorMessage = error.message) }
+                            }
+                        } else {
+                            _state.update { it.copy(errorMessage = "No AI response found in this session to bookmark.") }
+                        }
+                    }
+                    .onFailure { error ->
+                        _state.update { it.copy(errorMessage = error.message) }
+                    }
             }
         }
     }

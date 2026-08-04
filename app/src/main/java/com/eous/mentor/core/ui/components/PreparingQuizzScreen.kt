@@ -27,11 +27,11 @@ import com.eous.mentor.core.ui.theme.Inter
 private val HeaderPurple = Color(0xFF5B29A2)
 
 @Composable
-fun AnalyzingLoadingScreen(
+fun PreparingQuizzScreen(
     modifier: Modifier = Modifier,
     message: String = "Analyzing..."
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "analyzing_transition")
+    val infiniteTransition = rememberInfiniteTransition(label = "preparing_quizz_transition")
 
     // Playful mascot floating animation
     val mascotOffsetY by infiniteTransition.animateFloat(
