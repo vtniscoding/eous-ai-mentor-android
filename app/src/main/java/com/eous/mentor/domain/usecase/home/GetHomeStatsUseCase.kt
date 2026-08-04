@@ -28,6 +28,7 @@ class GetHomeStatsUseCase(
             val totalQueries = messages.count { it.role == "user" }
             val libraryItems = bookmarks.size
             val xp = (totalQueries * 10) + (libraryItems * 20)
+            userRepository.updateUserXp(userId, xp)
 
             val fallbackName = sessionRepository.getCurrentUserEmail()
                 ?.substringBefore("@")

@@ -394,4 +394,16 @@ class UserRepositoryImpl : UserRepository {
             Result.failure(e)
         }
     }
+
+    override suspend fun updateUserXp(userId: String, xp: Int): Result<Unit> {
+        return try {
+            supabase.from("profiles").update({ set("xp", xp) }) {
+                filter { eq("id", userId) }
+            }
+            Result.success(Unit)
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
 }

@@ -95,17 +95,10 @@ class PersonalViewModel(
                 }
                 val fetchedFriends = friendsRes.getOrDefault(emptyList())
 
-                // Load stats of all friends in parallel to get their XP points
+                // Map friends to their XP points directly from their Profile record
                 val friendsWithXpList = fetchedFriends.map { friend ->
-                    async(Dispatchers.IO) {
-                        val statsRes = getProgressStatsUseCase(friend.id, recordActivity = false)
-                        val stats = statsRes.getOrNull()
-                        val queries = stats?.totalQueries ?: 0
-                        val bookmarks = stats?.libraryItems ?: 0
-                        val xp = queries * 10 + bookmarks * 20
-                        friend to xp
-                    }
-                }.awaitAll()
+                    friend to friend.xp
+                }
 
                 val name = fetchedProfile?.display_name
                     ?: fetchedProfile?.email?.substringBefore("@")

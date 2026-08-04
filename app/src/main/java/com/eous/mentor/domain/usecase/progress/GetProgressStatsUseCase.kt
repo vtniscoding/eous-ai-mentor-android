@@ -87,6 +87,9 @@ class GetProgressStatsUseCase(
             val streak = recordedProfile?.current_streak ?: profile?.current_streak ?: 0
 
             val totalXp = totalQueries * 10 + libraryItems * 20
+            if (recordActivity) {
+                userRepository.updateUserXp(userId, totalXp)
+            }
             val level = (totalXp / 100) + 1
             val xp = totalXp % 100
 

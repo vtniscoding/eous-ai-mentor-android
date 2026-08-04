@@ -91,7 +91,7 @@ fun FriendProfileScreen(
                     val streak = state.stats?.streak ?: profile?.current_streak ?: 0
                     val totalQueries = state.stats?.totalQueries ?: 0
                     val libraryItems = state.stats?.libraryItems ?: 0
-                    val xp = totalQueries * 10 + libraryItems * 20
+                    val xp = profile?.xp ?: 0
 
                     Box(modifier = Modifier.fillMaxWidth()) {
                         // Main White Container Card

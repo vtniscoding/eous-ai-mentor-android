@@ -68,7 +68,8 @@ data class Profile(
         val longest_streak: Int = 0,
         val last_active_date: String? = null,
         val avatar_url: String? = null,
-        val current_session_id: String? = null
+        val current_session_id: String? = null,
+        val xp: Int = 0
 )
 
 /** A chat session grouping messages together. Maps to the `sessions` table in Supabase. */

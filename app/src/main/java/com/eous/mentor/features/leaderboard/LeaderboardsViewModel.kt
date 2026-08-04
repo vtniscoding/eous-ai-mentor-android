@@ -84,21 +84,15 @@ class LeaderboardsViewModel(
                 val list = mutableListOf<LeaderboardEntry>()
                 list.add(LeaderboardEntry(id = userId, name = name, xp = userXp, initials = userInitial, avatarUrl = avatarUrl, isCurrentUser = true))
 
-                // Fetch and add each real friend's XP
+                // Add each real friend's XP directly from their Profile record
                 friends.forEach { friend ->
-                    val friendStats = withContext(Dispatchers.IO) {
-                        getProgressStatsUseCase(friend.id, recordActivity = false).getOrNull()
-                    }
-                    val friendQueries = friendStats?.totalQueries ?: 0
-                    val friendBookmarks = friendStats?.libraryItems ?: 0
-                    val friendXp = friendQueries * 10 + friendBookmarks * 20
                     val friendInitial = (friend.display_name ?: friend.email?.substringBefore("@") ?: "User")
                         .trim().split("\\s+".toRegex()).lastOrNull()?.firstOrNull()?.uppercase() ?: "U"
                     list.add(
                         LeaderboardEntry(
                             id = friend.id,
                             name = friend.display_name ?: friend.email?.substringBefore("@") ?: "User",
-                            xp = friendXp,
+                            xp = friend.xp,
                             initials = friendInitial,
                             avatarUrl = friend.avatar_url,
                             isCurrentUser = false
