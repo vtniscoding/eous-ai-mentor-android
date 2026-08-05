@@ -30,6 +30,9 @@ import com.eous.mentor.features.auth.splash.SplashScreen
 import com.eous.mentor.features.home.HomeViewModel
 import com.eous.mentor.features.chat.ChatViewModel
 import com.eous.mentor.features.main.MainScreen
+import com.eous.mentor.features.auth.mfa.MfaVerifyScreen
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.mfa.AuthenticatorAssuranceLevel
 
 // --- Navigation Host ---
 @Composable
@@ -51,10 +54,21 @@ fun AuthRouter() {
                 val currentUid = sessionRepository.getCurrentUserId() ?: ""
                 activeUserId = currentUid
                 val savedAccounts = withContext(Dispatchers.IO) { SavedAccountsRepository.getSavedAccounts(context) }
-                targetDest =
-                        if (status == SessionState.AUTHENTICATED) "dashboard"
-                        else if (savedAccounts.isNotEmpty()) "relogin"
-                        else if (isTablet) "login" else "intro"
+                if (status == SessionState.AUTHENTICATED) {
+                    try {
+                        val (current, next) = com.eous.mentor.di.supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+                        if (current == AuthenticatorAssuranceLevel.AAL1 &&
+                            next == AuthenticatorAssuranceLevel.AAL2) {
+                            targetDest = "mfa_verify"
+                        } else {
+                            targetDest = "dashboard"
+                        }
+                    } catch (e: Throwable) {
+                        targetDest = "dashboard"
+                    }
+                } else {
+                    targetDest = if (savedAccounts.isNotEmpty()) "relogin" else if (isTablet) "login" else "intro"
+                }
                 isInitialized = true
             }
         }
@@ -72,8 +86,8 @@ fun AuthRouter() {
     val homeState = homeViewModel?.state?.collectAsState()?.value
     val chatState = chatViewModel?.state?.collectAsState()?.value
     val isTargetReady =
-            if (targetDest == "dashboard") {
-                isInitialized && homeState != null && !homeState.isLoading && chatState != null && !chatState.isLoadingSessions
+            if (targetDest == "dashboard" || targetDest == "mfa_verify") {
+                isInitialized && (targetDest == "mfa_verify" || (homeState != null && !homeState.isLoading && chatState != null && !chatState.isLoadingSessions))
             } else {
                 isInitialized
             }
@@ -184,6 +198,9 @@ fun AuthRouter() {
                     exitTransition = { fadeOut(animationSpec = tween(450)) }
                 ) {
                     ReLoginScreen(navController = navController)
+                }
+                composable("mfa_verify") {
+                    MfaVerifyScreen(navController = navController)
                 }
                 composable("dashboard") {
                     MainScreen(

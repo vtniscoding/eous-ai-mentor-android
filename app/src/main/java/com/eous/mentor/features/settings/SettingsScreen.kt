@@ -28,6 +28,15 @@ import androidx.compose.ui.unit.sp
 import com.eous.mentor.core.ui.theme.Inter
 import com.eous.mentor.core.ui.components.EousConfirmDialog
 import com.eous.mentor.core.data.repository.NotificationRepository
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.mfa.FactorType
+import coil3.compose.AsyncImage
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import kotlinx.coroutines.launch
+import android.widget.Toast
+import androidx.compose.ui.text.style.TextAlign
 
 @Composable
 fun SettingsScreen(
@@ -37,11 +46,24 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     var showLogoutDialog by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     // States for toggles
     var pushEnabled by remember { mutableStateOf(NotificationRepository.isPushEnabled(context)) }
-    var twoFactorEnabled by remember { mutableStateOf(true) }
+    var twoFactorEnabled by remember { mutableStateOf(false) }
     var darkModeEnabled by remember { mutableStateOf(true) }
+
+    var showEnrollDialog by remember { mutableStateOf(false) }
+    var showDisableConfirmDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val status = com.eous.mentor.di.supabase.auth.mfa.status
+            twoFactorEnabled = status.enabled
+        } catch (e: Throwable) {
+            twoFactorEnabled = false
+        }
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -137,7 +159,13 @@ fun SettingsScreen(
                     SettingsSwitchRow(
                         title = "2-Step Verification",
                         checked = twoFactorEnabled,
-                        onCheckedChange = { twoFactorEnabled = it }
+                        onCheckedChange = { checked ->
+                            if (checked) {
+                                showEnrollDialog = true
+                            } else {
+                                showDisableConfirmDialog = true
+                            }
+                        }
                     )
                 }
 
@@ -250,6 +278,299 @@ fun SettingsScreen(
             onDismiss = { showLogoutDialog = false }
         )
     }
+
+    if (showEnrollDialog) {
+        MfaEnrollDialog(
+            onDismiss = { showEnrollDialog = false },
+            onSuccess = {
+                showEnrollDialog = false
+                twoFactorEnabled = true
+            }
+        )
+    }
+
+    if (showDisableConfirmDialog) {
+        EousConfirmDialog(
+            title = "Disable 2-Step Verification?",
+            message = "Are you sure you want to disable 2-Step Verification? Your account will be less secure.",
+            confirmText = "Disable",
+            dismissText = "Cancel",
+            isDestructive = true,
+            onConfirm = {
+                showDisableConfirmDialog = false
+                scope.launch {
+                    try {
+                        val factors = com.eous.mentor.di.supabase.auth.mfa.retrieveFactorsForCurrentUser()
+                        for (factor in factors) {
+                            com.eous.mentor.di.supabase.auth.mfa.unenroll(factor.id)
+                        }
+                        twoFactorEnabled = false
+                        Toast.makeText(context, "2-Step Verification disabled.", Toast.LENGTH_SHORT).show()
+                    } catch (e: Throwable) {
+                        Toast.makeText(context, e.message ?: "Failed to disable 2FA.", Toast.LENGTH_LONG).show()
+                    }
+                }
+            },
+            onDismiss = {
+                showDisableConfirmDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun MfaEnrollDialog(
+    onDismiss: () -> Unit,
+    onSuccess: () -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    var factorId by remember { mutableStateOf<String?>(null) }
+    var totpQrCode by remember { mutableStateOf<String?>(null) }
+    var totpSecret by remember { mutableStateOf<String?>(null) }
+    var totpUri by remember { mutableStateOf<String?>(null) }
+    var code by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    // Start enrollment on dialog launch
+    LaunchedEffect(Unit) {
+        try {
+            val res = com.eous.mentor.di.supabase.auth.mfa.enroll(
+                factorType = FactorType.TOTP,
+                friendlyName = "Eous Mentor"
+            ) {
+                issuer = "Eous Mentor"
+            }
+            factorId = res.id
+            val (_, _, qrCode) = res.data
+            totpQrCode = qrCode
+            // Extract secret and URI from the TOTP URI in qrCode data
+            // The data contains (id, type, qrCode) for TOTP
+            totpUri = res.data.uri
+            totpSecret = res.data.secret
+        } catch (e: Throwable) {
+            errorMessage = e.message ?: "MFA enrollment failed to initiate."
+        }
+    }
+
+    val handleCancel = {
+        scope.launch {
+            val fId = factorId
+            if (fId != null) {
+                try {
+                    com.eous.mentor.di.supabase.auth.mfa.unenroll(fId)
+                } catch (e: Throwable) {
+                    // Ignore
+                }
+            }
+            onDismiss()
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = { handleCancel() },
+        title = {
+            Text(
+                text = "Setup 2-Step Verification",
+                fontFamily = Inter,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                color = Color.Black
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                val fId = factorId
+                if (fId == null && errorMessage == null) {
+                    CircularProgressIndicator(
+                        color = Color(0xFF6A3DE8),
+                        modifier = Modifier.size(36.dp),
+                        strokeWidth = 3.dp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Generating QR Code...",
+                        fontFamily = Inter,
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
+                } else if (errorMessage != null) {
+                    Text(
+                        text = errorMessage!!,
+                        color = Color.Red,
+                        fontFamily = Inter,
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center
+                    )
+                } else if (fId != null) {
+                    val secret = totpSecret ?: ""
+                    val uri = totpUri ?: ""
+                    Text(
+                        text = "Scan the QR code below using your authenticator app (Google Authenticator, Authy, etc.):",
+                        fontFamily = Inter,
+                        fontSize = 14.sp,
+                        color = Color(0xFF64748B),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    val qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${android.net.Uri.encode(uri)}"
+                    AsyncImage(
+                        model = qrUrl,
+                        contentDescription = "2FA QR Code",
+                        modifier = Modifier
+                            .size(180.dp)
+                            .background(Color.White)
+                            .border(1.dp, Color(0xFFCBD5E1), RoundedCornerShape(8.dp))
+                            .padding(8.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Or enter the secret key manually:",
+                        fontFamily = Inter,
+                        fontSize = 14.sp,
+                        color = Color(0xFF64748B)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp))
+                            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = secret,
+                            fontFamily = Inter,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF1E293B),
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Text(
+                            text = "Copy",
+                            color = Color(0xFF6A3DE8),
+                            fontFamily = Inter,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable {
+                                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                val clip = android.content.ClipData.newPlainText("2FA Secret", secret)
+                                clipboard.setPrimaryClip(clip)
+                                Toast.makeText(context, "Secret key copied!", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Text(
+                        text = "Enter the 6-digit verification code:",
+                        fontFamily = Inter,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = code,
+                        onValueChange = {
+                            if (it.length <= 6) code = it
+                            errorMessage = null
+                        },
+                        placeholder = { Text("000000", color = Color.Gray.copy(alpha = 0.5f)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Done
+                        ),
+                        textStyle = LocalTextStyle.current.copy(
+                            textAlign = TextAlign.Center,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth(0.8f)
+                            .height(56.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black,
+                            focusedContainerColor = Color(0xFFF1F1F1),
+                            unfocusedContainerColor = Color(0xFFF1F1F1),
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent,
+                            cursorColor = Color.Black
+                        )
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            val fId = factorId
+            TextButton(
+                enabled = fId != null && code.length == 6 && !isLoading,
+                onClick = {
+                    if (fId == null) return@TextButton
+                    isLoading = true
+                    scope.launch {
+                        try {
+                            com.eous.mentor.di.supabase.auth.mfa.createChallengeAndVerify(
+                                factorId = fId,
+                                code = code
+                            )
+                            Toast.makeText(context, "2-Step Verification enabled!", Toast.LENGTH_SHORT).show()
+                            onSuccess()
+                        } catch (e: Throwable) {
+                            errorMessage = e.message ?: "Invalid verification code. Please try again."
+                        } finally {
+                            isLoading = false
+                        }
+                    }
+                }
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        color = Color(0xFF6A3DE8),
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        text = "Verify & Enable",
+                        color = Color(0xFF6A3DE8),
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = Inter
+                    )
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { handleCancel() }) {
+                Text("Cancel", color = Color(0xFF64748B), fontFamily = Inter)
+            }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(20.dp)
+    )
 }
 
 @Composable

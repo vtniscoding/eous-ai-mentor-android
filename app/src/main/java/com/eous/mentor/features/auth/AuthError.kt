@@ -3,6 +3,10 @@ package com.eous.mentor.features.auth
 fun friendlyAuthError(e: Throwable): String {
     val msg = (e.localizedMessage ?: e.message ?: "").lowercase()
     return when {
+        "mfa_verification_failed" in msg || "invalid totp code" in msg ->
+            "Incorrect verification code. Please try again."
+        "mfa_challenge_expired" in msg ->
+            "The verification code expired. Please enter a new code."
         "invalid_credentials" in msg || "invalid login" in msg ->
             "Incorrect email or password. Please try again."
         "email not confirmed" in msg ->

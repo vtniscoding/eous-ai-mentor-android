@@ -38,6 +38,7 @@ import com.eous.mentor.domain.model.SavedAccount
 import com.eous.mentor.domain.usecase.auth.LoginUseCase
 import com.eous.mentor.features.auth.friendlyAuthError
 import kotlinx.coroutines.launch
+import io.github.jan.supabase.auth.auth
 
 private val HeaderPurple = Color(0xFF5B29A2)
 
@@ -191,19 +192,37 @@ fun ReLoginScreen(
                                             scope.launch {
                                                 val res = loginUseCase(account.email, account.password)
                                                 loggingInEmail = null
-                                                 if (res.isSuccess) {
-                                                     val currentUid = com.eous.mentor.di.RepositoryProvider.sessionRepository.getCurrentUserId()
-                                                     if (!currentUid.isNullOrEmpty()) {
-                                                         val newSessionId = java.util.UUID.randomUUID().toString()
-                                                         com.eous.mentor.di.RepositoryProvider.sessionRepository.saveLocalSessionId(context, newSessionId)
-                                                         com.eous.mentor.di.RepositoryProvider.userRepository.updateSessionId(currentUid, newSessionId)
-                                                     }
-                                                     Toast.makeText(
-                                                         context,
-                                                         "Welcome back, ${account.email}!",
-                                                         Toast.LENGTH_SHORT
-                                                     ).show()
-                                                     onLoginSuccess()
+                                                  if (res.isSuccess) {
+                                                      val currentUid = com.eous.mentor.di.RepositoryProvider.sessionRepository.getCurrentUserId()
+                                                      if (!currentUid.isNullOrEmpty()) {
+                                                          val newSessionId = java.util.UUID.randomUUID().toString()
+                                                          com.eous.mentor.di.RepositoryProvider.sessionRepository.saveLocalSessionId(context, newSessionId)
+                                                          com.eous.mentor.di.RepositoryProvider.userRepository.updateSessionId(currentUid, newSessionId)
+                                                      }
+                                                      try {
+                                                          val (current, next) = com.eous.mentor.di.supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+                                                          if (current == io.github.jan.supabase.auth.mfa.AuthenticatorAssuranceLevel.AAL1 &&
+                                                              next == io.github.jan.supabase.auth.mfa.AuthenticatorAssuranceLevel.AAL2) {
+                                                              Toast.makeText(context, "MFA Verification Required", Toast.LENGTH_SHORT).show()
+                                                              navController.navigateSafe("mfa_verify") {
+                                                                  popUpTo("relogin") { inclusive = true }
+                                                              }
+                                                          } else {
+                                                              Toast.makeText(
+                                                                  context,
+                                                                  "Welcome back, ${account.email}!",
+                                                                  Toast.LENGTH_SHORT
+                                                              ).show()
+                                                              onLoginSuccess()
+                                                          }
+                                                      } catch (e: Throwable) {
+                                                          Toast.makeText(
+                                                              context,
+                                                              "Welcome back, ${account.email}!",
+                                                              Toast.LENGTH_SHORT
+                                                          ).show()
+                                                          onLoginSuccess()
+                                                      }
                                                 } else {
                                                     val msg = res.exceptionOrNull()
                                                         ?.let { friendlyAuthError(it) }

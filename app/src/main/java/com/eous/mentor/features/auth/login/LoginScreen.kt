@@ -40,6 +40,7 @@ import com.eous.mentor.R
 import com.eous.mentor.core.ui.theme.*
 
 import kotlinx.coroutines.launch
+import io.github.jan.supabase.auth.auth
 
 @Composable
 fun LoginFormScreen(
@@ -219,10 +220,26 @@ fun LoginFormScreen(
                                         )
                                     }
                                 }
-                            }
-                            Toast.makeText(context, "Logged in successfully!", Toast.LENGTH_SHORT).show()
-                            navController.navigateSafe("dashboard") {
-                                popUpTo("intro") { inclusive = true }
+                                try {
+                                    val (current, next) = com.eous.mentor.di.supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+                                    if (current == io.github.jan.supabase.auth.mfa.AuthenticatorAssuranceLevel.AAL1 &&
+                                        next == io.github.jan.supabase.auth.mfa.AuthenticatorAssuranceLevel.AAL2) {
+                                        Toast.makeText(context, "MFA Verification Required", Toast.LENGTH_SHORT).show()
+                                        navController.navigateSafe("mfa_verify") {
+                                            popUpTo("intro") { inclusive = true }
+                                        }
+                                    } else {
+                                        Toast.makeText(context, "Logged in successfully!", Toast.LENGTH_SHORT).show()
+                                        navController.navigateSafe("dashboard") {
+                                            popUpTo("intro") { inclusive = true }
+                                        }
+                                    }
+                                } catch (e: Throwable) {
+                                    Toast.makeText(context, "Logged in successfully!", Toast.LENGTH_SHORT).show()
+                                    navController.navigateSafe("dashboard") {
+                                        popUpTo("intro") { inclusive = true }
+                                    }
+                                }
                             }
                         }
                     },
