@@ -77,7 +77,7 @@ fun PreparingQuizzScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Image(
-                painter = painterResource(id = R.drawable.ic_preparing_quiz),
+                painter = painterResource(id = R.drawable.ic_analyzing_eous),
                 contentDescription = "Analyzing Mascot",
                 modifier = Modifier
                     .size(155.dp)

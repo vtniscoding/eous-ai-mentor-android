@@ -336,7 +336,7 @@ fun HomeScreen(
                                                 Image(
                                                         painter =
                                                                 painterResource(
-                                                                        id = R.drawable.ic_home_1
+                                                                        id = R.drawable.ic_curious_eous_1
                                                                 ),
                                                         contentDescription = "Eous Mascot",
                                                         contentScale = ContentScale.Fit,
@@ -841,7 +841,7 @@ fun HomeScreen(
                                                                                                         painterResource(
                                                                                                                 id =
                                                                                                                         R.drawable
-                                                                                                                                .ic_chest
+                                                                                                                                .ic_badge_chest_hunter
                                                                                                         ),
                                                                                                 contentDescription =
                                                                                                         "Treasure Chest",

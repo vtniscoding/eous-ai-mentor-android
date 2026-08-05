@@ -265,7 +265,7 @@ fun ChatLandingContent(
 
                 // Mascot
                 Image(
-                        painter = painterResource(id = R.drawable.ic_chat),
+                        painter = painterResource(id = R.drawable.ic_happy_eous),
                         contentDescription = "Eous Mascot",
                         modifier = Modifier.size(90.dp)
                 )
@@ -698,7 +698,7 @@ fun YourQuestionCard(questionText: String, imageUrl: String? = null) {
         Box(modifier = Modifier.fillMaxWidth().padding(top = 32.dp)) {
                 // Mascot sticking out behind card
                 Image(
-                        painter = painterResource(id = R.drawable.ic_aianswer),
+                        painter = painterResource(id = R.drawable.ic_grinning_eous_1),
                         contentDescription = "Mascot peeking",
                         modifier = Modifier.align(Alignment.TopEnd).offset(x = (-16).dp, y = (-38).dp).size(72.dp)
                 )

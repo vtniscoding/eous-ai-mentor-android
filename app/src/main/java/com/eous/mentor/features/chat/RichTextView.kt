@@ -257,7 +257,7 @@ fun RichChatThreadView(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val mascotBase64 = remember {
-        val drawable = androidx.core.content.ContextCompat.getDrawable(context, com.eous.mentor.R.drawable.ic_aianswer)
+        val drawable = androidx.core.content.ContextCompat.getDrawable(context, com.eous.mentor.R.drawable.ic_grinning_eous_1)
         if (drawable != null) {
             val bitmap = android.graphics.Bitmap.createBitmap(
                 drawable.intrinsicWidth.takeIf { it > 0 } ?: 150,

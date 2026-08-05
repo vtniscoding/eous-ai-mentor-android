@@ -305,7 +305,7 @@ fun Library(
                                         }
                                     }
                                     Image(
-                                        painter = painterResource(id = R.drawable.ic_lib_1),
+                                        painter = painterResource(id = R.drawable.ic_working_eous),
                                         contentDescription = "Mascot Library",
                                         modifier = Modifier
                                             .weight(0.7f)

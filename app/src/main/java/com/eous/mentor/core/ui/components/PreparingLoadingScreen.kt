@@ -75,7 +75,7 @@ fun PreparingLoadingScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Image(
-                painter = painterResource(id = R.drawable.ic_preparing),
+                painter = painterResource(id = R.drawable.ic_charging_eous),
                 contentDescription = "Preparing Mascot",
                 modifier = Modifier
                     .size(155.dp)

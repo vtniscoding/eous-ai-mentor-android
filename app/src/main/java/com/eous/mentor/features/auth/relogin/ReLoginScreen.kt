@@ -146,7 +146,7 @@ fun ReLoginScreen(
             ) {
                 // Mascot Image
                 Image(
-                        painter = painterResource(id = R.drawable.ic_relogin),
+                        painter = painterResource(id = R.drawable.ic_greeting_eous_2),
                         contentDescription = "Eous Relogin Mascot",
                         modifier = Modifier.size(105.dp)
                 )

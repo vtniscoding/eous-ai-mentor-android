@@ -598,7 +598,7 @@ private fun BadgesSection(streak: Int, todayQuizzesCompleted: Int) {
             BadgeItem(drawableRes = R.drawable.ic_badge_streak_3, isUnlocked = streak >= 3)
             BadgeItem(drawableRes = R.drawable.ic_badge_streak_5, isUnlocked = streak >= 5)
             BadgeItem(drawableRes = R.drawable.ic_badge_streak_10, isUnlocked = streak >= 10)
-            BadgeItem(drawableRes = R.drawable.ic_chest, isUnlocked = todayQuizzesCompleted >= 5)
+            BadgeItem(drawableRes = R.drawable.ic_badge_chest_hunter, isUnlocked = todayQuizzesCompleted >= 5)
         }
     }
 }

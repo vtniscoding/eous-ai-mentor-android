@@ -51,7 +51,7 @@ fun LeaderboardsScreen(
     ) {
         // 1. Background image for the upper portion
         Image(
-            painter = painterResource(id = R.drawable.ic_leaderboards_background),
+            painter = painterResource(id = R.drawable.leaderboards_background),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
@@ -127,7 +127,7 @@ fun LeaderboardsScreen(
                             verticalArrangement = Arrangement.Center
                         ) {
                             Icon(
-                                painter = painterResource(id = R.drawable.ic_chest),
+                                painter = painterResource(id = R.drawable.ic_badge_chest_hunter),
                                 contentDescription = null,
                                 tint = PrimaryPurple.copy(alpha = 0.7f),
                                 modifier = Modifier.size(80.dp)

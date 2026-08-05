@@ -217,7 +217,7 @@ fun ProfileScreen(
                     ) {
                         // Robot Mascot (rendered first, placing it behind the card with downward offset)
                         Image(
-                            painter = painterResource(id = R.drawable.ic_onboarding),
+                            painter = painterResource(id = R.drawable.ic_winking_eous),
                             contentDescription = "Onboarding Mascot",
                             modifier = Modifier
                                 .size(180.dp)

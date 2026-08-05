@@ -192,9 +192,9 @@ fun SplashScreen(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                // Eous Mascot (ic_splash_1)
+                // Eous Mascot (ic_greeting_eous_1)
                 Image(
-                    painter = painterResource(id = R.drawable.ic_splash_1),
+                    painter = painterResource(id = R.drawable.ic_greeting_eous_1),
                     contentDescription = "Eous Mascot",
                     modifier = Modifier.fillMaxSize()
                 )

@@ -102,7 +102,7 @@ fun AlertScreen(onMenuClick: () -> Unit) {
     }
 
     // Initial notification list state using user-specified icons:
-    // Welcome -> ic_alert_1
+    // Welcome -> ic_welcome
     var notifications by remember {
         mutableStateOf(
                 listOf(
@@ -112,7 +112,7 @@ fun AlertScreen(onMenuClick: () -> Unit) {
                                 description =
                                         "Get started by asking questions to your AI mentor and explore tools to boost your learning.",
                                 time = "Just now",
-                                iconRes = R.drawable.ic_alert_1,
+                                iconRes = R.drawable.ic_welcome,
                                 section = "Today"
                         )
                 )
@@ -131,8 +131,8 @@ fun AlertScreen(onMenuClick: () -> Unit) {
     }
 
     // Test notification pool to cycle when clicking "Test Push Notification":
-    // Lost streak -> ic_alert_2
-    // You're on fire -> ic_alert_3
+    // Lost streak -> ic_unhappy_eous
+    // You're on fire -> ic_fire_eous
     val testPool = remember {
         listOf(
                 NotificationItem(
@@ -150,7 +150,7 @@ fun AlertScreen(onMenuClick: () -> Unit) {
                         description =
                                 "Am I not good enough or getting troubles with your motivations.",
                         time = "1 day ago",
-                        iconRes = R.drawable.ic_alert_2,
+                        iconRes = R.drawable.ic_unhappy_eous,
                         section = "Recent"
                 ),
                 NotificationItem(
@@ -159,7 +159,7 @@ fun AlertScreen(onMenuClick: () -> Unit) {
                         description =
                                 "Congratulations on starting your learning streak! Check-in daily to build consistency.",
                         time = "3 days ago",
-                        iconRes = R.drawable.ic_alert_3,
+                        iconRes = R.drawable.ic_fire_eous,
                         section = "Recent"
                 )
         )
@@ -479,19 +479,17 @@ private fun showSystemNotification(context: Context, title: String, message: Str
         val notificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel =
-                    NotificationChannel(
-                                    channelId,
-                                    "Eous Mentor Notifications",
-                                    NotificationManager.IMPORTANCE_HIGH
-                            )
-                            .apply {
-                                description = "Notifications from Eous AI Mentor"
-                                enableVibration(true)
-                            }
-            notificationManager.createNotificationChannel(channel)
-        }
+        val channel =
+                NotificationChannel(
+                                channelId,
+                                "Eous Mentor Notifications",
+                                NotificationManager.IMPORTANCE_HIGH
+                        )
+                        .apply {
+                            description = "Notifications from Eous AI Mentor"
+                            enableVibration(true)
+                        }
+        notificationManager.createNotificationChannel(channel)
 
         val builder =
                 NotificationCompat.Builder(context, channelId)

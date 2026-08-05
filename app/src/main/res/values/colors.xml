@@ -1,11 +1,3 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Resource update test -->
 <resources>
-    <color name="ic_launcher_background">#0c0d0e</color>
-
-    <!-- Brand Colors -->
-    <color name="eous_purple">#9B5CE9</color>
-    <color name="eous_indigo">#6856E6</color>
-    <color name="eous_robot_face">#1C1C1C</color>
-    <color name="eous_white">#FFFFFF</color>
 </resources>

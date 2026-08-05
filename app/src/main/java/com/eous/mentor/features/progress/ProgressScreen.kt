@@ -391,9 +391,9 @@ private fun TotalQuestionCard(totalQueries: Int) {
                 )
             }
 
-            // Mascot Illustration using ic_total_question
+            // Mascot Illustration using ic_curious_eous_2
             Image(
-                painter = painterResource(id = R.drawable.ic_total_question),
+                painter = painterResource(id = R.drawable.ic_curious_eous_2),
                 contentDescription = "Total Question Mascot",
                 modifier = Modifier
                     .size(115.dp)

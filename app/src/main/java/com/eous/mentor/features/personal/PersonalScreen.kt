@@ -436,8 +436,9 @@ fun PersonalScreen(
                                         pendingAvatarUri?.let { uri ->
                                             isSavingAvatar = true
                                             try {
-                                                val inputStream = context.contentResolver.openInputStream(uri)
-                                                val bytes = inputStream?.readBytes()
+                                                val bytes = context.contentResolver.openInputStream(uri)?.use { 
+                                                    it.readBytes()
+                                                }
                                                 if (bytes != null) {
                                                     viewModel.uploadAvatar(bytes) {
                                                         isSavingAvatar = false
@@ -814,7 +815,7 @@ private fun BadgesSection(streak: Int, todayQuizzesCompleted: Int) {
             BadgeItem(drawableRes = R.drawable.ic_badge_streak_3, isUnlocked = streak >= 3)
             BadgeItem(drawableRes = R.drawable.ic_badge_streak_5, isUnlocked = streak >= 5)
             BadgeItem(drawableRes = R.drawable.ic_badge_streak_10, isUnlocked = streak >= 10)
-            BadgeItem(drawableRes = R.drawable.ic_chest, isUnlocked = todayQuizzesCompleted >= 5)
+            BadgeItem(drawableRes = R.drawable.ic_badge_chest_hunter, isUnlocked = todayQuizzesCompleted >= 5)
         }
     }
 }
@@ -965,7 +966,7 @@ private fun ProUpgradeCard(onClaimPro: () -> Unit) {
         Box(modifier = Modifier.fillMaxWidth()) {
             // Mascot Image positioned on Bottom-Right
             Image(
-                    painter = painterResource(id = R.drawable.ic_pro),
+                    painter = painterResource(id = R.drawable.ic_grinning_eous_2),
                     contentDescription = null,
                     modifier =
                             Modifier.align(Alignment.BottomEnd)
