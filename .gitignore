@@ -50,6 +50,9 @@ captures/
 # Google Services (APIs or Firebase)
 google-services.json
 
+# Release
+.release/
+
 # --- SECURITY / SECRETS / API KEYS ---
 
 # Local configuration file (sdk path, etc)
