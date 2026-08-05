@@ -18,6 +18,19 @@ object NotificationRepository {
     private const val KEY_NOTIFICATIONS = "notifications_json"
     private const val KEY_SHOWN_FRIEND_REQUESTS = "shown_friend_requests_json"
     private const val CHANNEL_ID = "eous_alerts_channel"
+    private const val KEY_PUSH_ENABLED = "push_notifications_enabled"
+
+    private fun getGlobalPrefs(context: Context): SharedPreferences {
+        return context.getSharedPreferences("eous_global_settings", Context.MODE_PRIVATE)
+    }
+
+    fun isPushEnabled(context: Context): Boolean {
+        return getGlobalPrefs(context).getBoolean(KEY_PUSH_ENABLED, true)
+    }
+
+    fun setPushEnabled(context: Context, enabled: Boolean) {
+        getGlobalPrefs(context).edit().putBoolean(KEY_PUSH_ENABLED, enabled).apply()
+    }
 
     private val json = Json { ignoreUnknownKeys = true }
     private val welcomeSentUsers = mutableSetOf<String>()
@@ -146,6 +159,7 @@ object NotificationRepository {
 
     // --- System Push Notification Generator ---
     fun showSystemNotification(context: Context, title: String, message: String, navigateToRoute: String? = null) {
+        if (!isPushEnabled(context)) return
         try {
             val notificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
