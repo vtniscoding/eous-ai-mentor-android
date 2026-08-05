@@ -3,10 +3,12 @@ package com.eous.mentor.core.ui.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -20,6 +22,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,10 +46,17 @@ val MainNavItems =
 
 @Composable
 fun MainNavigationBar(
+        userId: String,
         currentScreen: String,
         onNavigate: (String) -> Unit,
         modifier: Modifier = Modifier
 ) {
+        val context = LocalContext.current
+        val hasUnreadAlerts = remember(currentScreen, userId) {
+                com.eous.mentor.core.data.repository.NotificationRepository.getNotifications(context, userId)
+                        .any { !it.isRead }
+        }
+
         Box(
                 modifier = modifier
                         .fillMaxWidth()
@@ -81,6 +91,7 @@ fun MainNavigationBar(
                                 MainNavItemView(
                                         item = item,
                                         isSelected = isSelected,
+                                        hasUnreadAlerts = hasUnreadAlerts,
                                         onClick = { onNavigate(item.route) }
                                 )
                         }
@@ -92,6 +103,7 @@ fun MainNavigationBar(
 private fun RowScope.MainNavItemView(
         item: MainNavItem,
         isSelected: Boolean,
+        hasUnreadAlerts: Boolean,
         onClick: () -> Unit
 ) {
         val purpleColor = Color(0xFF5B21B6)
@@ -126,12 +138,23 @@ private fun RowScope.MainNavItemView(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center
                         ) {
-                                Icon(
-                                        imageVector = item.selectedIcon,
-                                        contentDescription = item.label,
-                                        tint = contentColor,
-                                        modifier = Modifier.size(22.dp)
-                                )
+                                Box(contentAlignment = Alignment.TopEnd) {
+                                        Icon(
+                                                imageVector = item.selectedIcon,
+                                                contentDescription = item.label,
+                                                tint = contentColor,
+                                                modifier = Modifier.size(22.dp)
+                                        )
+                                        if (item.route == "alert" && hasUnreadAlerts) {
+                                                Box(
+                                                        modifier = Modifier
+                                                                .size(8.dp)
+                                                                .offset(x = 2.dp, y = (-2).dp)
+                                                                .background(Color.Red, CircleShape)
+                                                                .border(1.dp, Color.White, CircleShape)
+                                                )
+                                        }
+                                }
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                         text = item.label,
@@ -146,12 +169,23 @@ private fun RowScope.MainNavItemView(
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                                 contentAlignment = Alignment.Center
                         ) {
-                                Icon(
-                                        imageVector = item.unselectedIcon,
-                                        contentDescription = item.label,
-                                        tint = contentColor,
-                                        modifier = Modifier.size(24.dp)
-                                )
+                                Box(contentAlignment = Alignment.TopEnd) {
+                                        Icon(
+                                                imageVector = item.unselectedIcon,
+                                                contentDescription = item.label,
+                                                tint = contentColor,
+                                                modifier = Modifier.size(24.dp)
+                                        )
+                                        if (item.route == "alert" && hasUnreadAlerts) {
+                                                Box(
+                                                        modifier = Modifier
+                                                                .size(8.dp)
+                                                                .offset(x = 2.dp, y = (-2).dp)
+                                                                .background(Color.Red, CircleShape)
+                                                                .border(1.dp, Color.White, CircleShape)
+                                                )
+                                        }
+                                }
                         }
                 }
         }

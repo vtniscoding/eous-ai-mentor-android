@@ -592,7 +592,7 @@ private fun BadgesSection(streak: Int, todayQuizzesCompleted: Int) {
         Spacer(modifier = Modifier.height(12.dp))
 
         Row(
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             BadgeItem(drawableRes = R.drawable.ic_badge_streak_3, isUnlocked = streak >= 3)
@@ -604,8 +604,8 @@ private fun BadgesSection(streak: Int, todayQuizzesCompleted: Int) {
 }
 
 @Composable
-private fun BadgeItem(drawableRes: Int, isUnlocked: Boolean) {
-    Box(modifier = Modifier.size(76.dp), contentAlignment = Alignment.Center) {
+private fun BadgeItem(drawableRes: Int, isUnlocked: Boolean, sizeDp: Int = 60) {
+    Box(modifier = Modifier.size(sizeDp.dp), contentAlignment = Alignment.Center) {
         Image(
             painter = painterResource(id = drawableRes),
             contentDescription = null,

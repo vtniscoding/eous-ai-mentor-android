@@ -18,12 +18,14 @@ class GetHomeStatsUseCase(
             val quizzesDeferred = async { userRepository.getQuizzes(userId).getOrDefault(emptyList()) }
             val profileDeferred = async { userRepository.getProfile(userId).getOrNull() }
             val recordedProfileDeferred = async { userRepository.recordUserActivity(userId).getOrNull() }
+            val requestsDeferred = async { userRepository.getPendingRequests(userId).getOrDefault(emptyList()) }
 
             val bookmarks = bookmarksDeferred.await()
             val quizzes = quizzesDeferred.await()
             val profile = profileDeferred.await()
             val recordedProfile = recordedProfileDeferred.await()
             val messages = messagesDeferred.await()
+            val pendingRequests = requestsDeferred.await()
 
             val totalQueries = messages.count { it.role == "user" }
             val libraryItems = bookmarks.size
@@ -39,9 +41,13 @@ class GetHomeStatsUseCase(
                 ?: profile?.display_name?.takeIf { it.isNotBlank() }
                 ?: fallbackName
 
-            val streak = recordedProfile?.current_streak
-                ?: profile?.current_streak
-                ?: 0
+            val oldStreak = profile?.current_streak ?: 0
+            val newStreak = recordedProfile?.current_streak ?: 0
+
+            val isStreak3Achieved = oldStreak == 2 && newStreak == 3
+            val isStreakLost = oldStreak > 1 && newStreak == 1
+
+            val streak = if (newStreak > 0) newStreak else oldStreak
 
             val rawLevel = profile?.education_level ?: recordedProfile?.education_level
             val formattedEducationLevel = when (rawLevel) {
@@ -58,7 +64,10 @@ class GetHomeStatsUseCase(
                     educationLevel = formattedEducationLevel,
                     streak = streak,
                     xp = xp,
-                    quizzes = quizzes
+                    quizzes = quizzes,
+                    isStreak3Achieved = isStreak3Achieved,
+                    isStreakLost = isStreakLost,
+                    pendingRequests = pendingRequests
                 )
             )
         } catch (e: Throwable) {

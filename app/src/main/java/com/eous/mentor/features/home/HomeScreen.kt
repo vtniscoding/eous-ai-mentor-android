@@ -44,7 +44,7 @@ fun HomeScreen(
         val state by viewModel.state.collectAsState()
         val stats = state.stats
 
-        LaunchedEffect(Unit) { viewModel.loadDashboardStats() }
+        LaunchedEffect(Unit) { viewModel.loadDashboardStats(context) }
 
         val cardShadowColor = Color(0xFF1E293B)
         val purpleContainerBg = Color(0xFF5E27B6)
@@ -830,7 +830,7 @@ fun HomeScreen(
                                                                                                                 0.85f
                                                                                                         )
                                                                                                         .height(
-                                                                                                                105.dp
+                                                                                                                85.dp
                                                                                                         ),
                                                                                         contentAlignment =
                                                                                                 Alignment
@@ -850,7 +850,7 @@ fun HomeScreen(
                                                                                                                 .Fit,
                                                                                                 modifier =
                                                                                                         Modifier.size(
-                                                                                                                105.dp
+                                                                                                                85.dp
                                                                                                         )
                                                                                         )
                                                                                 }

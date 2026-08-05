@@ -356,7 +356,12 @@ class ChatViewModel(
 
                         aiResponseJob =
                                 viewModelScope.launch {
-                                    val historyBeforeLast = _state.value.messages.dropLast(1)
+                                    val historyBeforeLast = _state.value.messages
+                                            .dropLast(1)
+                                            .filter { msg ->
+                                                !(msg.role == "ai" && !msg.quiz_id.isNullOrBlank()) &&
+                                                !(msg.role == "user" && msg.content == "Generate a practice quiz on this topic")
+                                            }
                                     val context =
                                             UserContext(
                                                     education_level =

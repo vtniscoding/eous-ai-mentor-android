@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
@@ -42,14 +43,16 @@ private val LightPurpleBg = Color(0xFFF1F0FF)
 fun FriendsScreen(
     userId: String,
     navController: NavController,
-    viewModel: FriendsViewModel = remember(userId) { FriendsViewModel(userId) }
+    viewModel: FriendsViewModel = remember(userId) { FriendsViewModel(userId) },
+    initialTab: Int = 0
 ) {
     val state by viewModel.state.collectAsState()
-    var selectedTabIndex by remember { mutableStateOf(0) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var selectedTabIndex by remember { mutableStateOf(initialTab) }
     val tabs = listOf("My Friends", "Add Friends", "Requests")
 
     LaunchedEffect(selectedTabIndex) {
-        viewModel.loadData()
+        viewModel.loadData(context)
     }
 
     Box(
@@ -161,9 +164,12 @@ fun FriendsScreen(
                             userId = userId,
                             isSearching = state.isSearching,
                             navController = navController,
+                            suggestedUsers = state.suggestedUsers,
                             onSearchQueryChange = { viewModel.searchUsers(it) },
                             onAddFriend = { viewModel.sendFriendRequest(it) },
-                            onAcceptFriend = { viewModel.acceptFriendRequest(it) }
+                            onAcceptFriend = { viewModel.acceptFriendRequest(it) },
+                            onDismissSuggested = { viewModel.dismissSuggested(it) },
+                            onAddSuggestedFriend = { viewModel.addSuggestedFriend(it) }
                         )
                         2 -> RequestsTab(
                             requests = state.pendingRequests,
@@ -279,9 +285,12 @@ private fun AddFriendsTab(
     userId: String,
     isSearching: Boolean,
     navController: NavController,
+    suggestedUsers: List<SuggestedUser>,
     onSearchQueryChange: (String) -> Unit,
     onAddFriend: (String) -> Unit,
-    onAcceptFriend: (String) -> Unit
+    onAcceptFriend: (String) -> Unit,
+    onDismissSuggested: (String) -> Unit,
+    onAddSuggestedFriend: (String) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -309,125 +318,228 @@ private fun AddFriendsTab(
             Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = PrimaryPurple)
             }
-        } else if (searchQuery.trim().isNotEmpty() && searchResults.isEmpty()) {
-            Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                Text(
-                    text = "No users found.",
-                    color = TextDarkGray,
-                    fontSize = 14.sp,
-                    fontFamily = Inter
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(searchResults) { user ->
-                    val name = user.display_name ?: user.email?.substringBefore("@") ?: "User"
-                    val initial = name.trim().split("\\s+".toRegex()).lastOrNull()?.firstOrNull()?.uppercase() ?: "U"
+        } else if (searchQuery.trim().isNotEmpty()) {
+            if (searchResults.isEmpty()) {
+                Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "No users found.",
+                        color = TextDarkGray,
+                        fontSize = 14.sp,
+                        fontFamily = Inter
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(searchResults) { user ->
+                        val name = user.display_name ?: user.email?.substringBefore("@") ?: "User"
+                        val initial = name.trim().split("\\s+".toRegex()).lastOrNull()?.firstOrNull()?.uppercase() ?: "U"
 
-                    // Xác định trạng thái kết bạn
-                    val relation = allFriendships.find {
-                        (it.sender_id == userId && it.receiver_id == user.id) ||
-                        (it.sender_id == user.id && it.receiver_id == userId)
-                    }
+                        // Xác định trạng thái kết bạn
+                        val relation = allFriendships.find {
+                            (it.sender_id == userId && it.receiver_id == user.id) ||
+                            (it.sender_id == user.id && it.receiver_id == userId)
+                        }
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
+                        Row(
                             modifier = Modifier
-                                .size(50.dp)
-                                .background(LightBlueAvatar, CircleShape)
-                                .clip(CircleShape)
-                                .clickable { navController.navigateSafe("friend_profile/${user.id}") },
-                            contentAlignment = Alignment.Center
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            if (!user.avatar_url.isNullOrEmpty()) {
-                                AsyncImage(
-                                    model = user.avatar_url,
-                                    contentDescription = "Avatar",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(50.dp)
+                                    .background(LightBlueAvatar, CircleShape)
+                                    .clip(CircleShape)
+                                    .clickable { navController.navigateSafe("friend_profile/${user.id}") },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (!user.avatar_url.isNullOrEmpty()) {
+                                    AsyncImage(
+                                        model = user.avatar_url,
+                                        contentDescription = "Avatar",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Text(
+                                        text = initial,
+                                        color = PrimaryPurple,
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = Inter
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
                                 Text(
-                                    text = initial,
-                                    color = PrimaryPurple,
-                                    fontSize = 18.sp,
+                                    text = name,
+                                    color = Color.Black,
+                                    fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = Inter
                                 )
+                                Text(
+                                    text = user.email ?: "",
+                                    color = TextDarkGray,
+                                    fontSize = 12.sp,
+                                    fontFamily = Inter
+                                )
                             }
-                        }
 
-                        Spacer(modifier = Modifier.width(16.dp))
-
-                        Column(
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = name,
-                                color = Color.Black,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = Inter
-                            )
-                            Text(
-                                text = user.email ?: "",
-                                color = TextDarkGray,
-                                fontSize = 12.sp,
-                                fontFamily = Inter
-                            )
-                        }
-
-                        if (relation == null) {
-                            Button(
-                                onClick = { onAddFriend(user.id) },
-                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text("Add Friend", fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = Inter)
-                            }
-                        } else if (relation.status == "accepted") {
-                            Text(
-                                text = "Friend",
-                                color = TextDarkGray,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = Inter,
-                                modifier = Modifier.padding(horizontal = 8.dp)
-                            )
-                        } else if (relation.status == "pending") {
-                            if (relation.sender_id == userId) {
+                            if (relation == null) {
                                 Button(
-                                    onClick = {},
-                                    enabled = false,
-                                    colors = ButtonDefaults.buttonColors(
-                                        disabledContainerColor = DividerColor,
-                                        disabledContentColor = TextDarkGray
-                                    ),
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    Text("Pending", fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = Inter)
-                                }
-                            } else {
-                                Button(
-                                    onClick = { onAcceptFriend(user.id) },
+                                    onClick = { onAddFriend(user.id) },
                                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
-                                    Text("Accept", fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = Inter)
+                                    Text("Add Friend", fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = Inter)
+                                }
+                            } else if (relation.status == "accepted") {
+                                Text(
+                                    text = "Friend",
+                                    color = TextDarkGray,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = Inter,
+                                    modifier = Modifier.padding(horizontal = 8.dp)
+                                )
+                            } else if (relation.status == "pending") {
+                                if (relation.sender_id == userId) {
+                                    Button(
+                                        onClick = {},
+                                        enabled = false,
+                                        colors = ButtonDefaults.buttonColors(
+                                            disabledContainerColor = DividerColor,
+                                            disabledContentColor = TextDarkGray
+                                        ),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Text("Pending", fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = Inter)
+                                    }
+                                } else {
+                                    Button(
+                                        onClick = { onAcceptFriend(user.id) },
+                                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Text("Accept", fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = Inter)
+                                    }
+                                }
+                            }
+                        }
+
+                        HorizontalDivider(color = DividerColor, thickness = 1.dp)
+                    }
+                }
+            }
+        } else {
+            // Hiển thị Someone you may know dạng danh sách kiểu mạng xã hội
+            Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                Text(
+                    text = "Someone you may know",
+                    color = Color.Black,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = Inter,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+
+                if (suggestedUsers.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("No suggestions available", color = TextDarkGray, fontSize = 14.sp, fontFamily = Inter)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(suggestedUsers, key = { it.id }) { user ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color(0xFFF8FAFC), RoundedCornerShape(16.dp))
+                                    .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(16.dp))
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(46.dp)
+                                        .background(LightBlueAvatar, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = user.avatarLetter,
+                                        color = PrimaryPurple,
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = Inter
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = user.name,
+                                        color = Color.Black,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = Inter
+                                    )
+                                    Text(
+                                        text = user.email,
+                                        color = TextDarkGray,
+                                        fontSize = 11.sp,
+                                        fontFamily = Inter
+                                    )
+                                }
+
+                                Button(
+                                    onClick = { onAddSuggestedFriend(user.id) },
+                                    enabled = !user.isAdded,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (user.isAdded) Color(0xFF94A3B8) else PrimaryPurple,
+                                        disabledContainerColor = Color(0xFF94A3B8)
+                                    ),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.height(32.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                                ) {
+                                    Text(
+                                        text = if (user.isAdded) "Requested" else "Add",
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = Inter
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                IconButton(
+                                    onClick = { onDismissSuggested(user.id) },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Dismiss",
+                                        tint = TextDarkGray,
+                                        modifier = Modifier.size(16.dp)
+                                    )
                                 }
                             }
                         }
                     }
-
-                    HorizontalDivider(color = DividerColor, thickness = 1.dp)
                 }
             }
         }

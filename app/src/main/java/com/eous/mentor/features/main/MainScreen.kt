@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
+import com.eous.mentor.core.navigation.navigateSafe
 import androidx.compose.animation.animateColorAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.eous.mentor.core.ui.components.MainNavigationBar
@@ -91,9 +92,25 @@ fun MainScreen(
     val chatState by chatViewModel.state.collectAsState()
     val personalState by personalViewModel.state.collectAsState()
     val progressState by progressViewModel.state.collectAsState()
-
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(userId) {
+        if (userId.isNotEmpty()) {
+            com.eous.mentor.core.data.repository.NotificationRepository.checkAndSendWelcomeNotification(context, userId)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        com.eous.mentor.core.navigation.GlobalNavigationHelper.pendingRoute?.let { route ->
+            if (route.startsWith("friends")) {
+                navController.navigateSafe(route)
+            } else {
+                viewModel.navigateTo(route)
+            }
+            com.eous.mentor.core.navigation.GlobalNavigationHelper.pendingRoute = null
+        }
+    }
 
     LaunchedEffect(personalState.profile) {
         val profile = personalState.profile
@@ -331,6 +348,8 @@ fun MainScreen(
                     }
                     "alert" -> {
                         AlertScreen(
+                            userId = userId,
+                            navController = navController,
                             onMenuClick = {}
                         )
                     }
@@ -486,6 +505,7 @@ fun MainScreen(
         // --- BOTTOM NAVIGATION BAR ---
         if (!isSubScreen && !isScreenLoading) {
             MainNavigationBar(
+                userId = userId,
                 currentScreen = state.currentScreen,
                 onNavigate = { route -> viewModel.navigateTo(route) },
                 modifier = Modifier.align(Alignment.BottomCenter)

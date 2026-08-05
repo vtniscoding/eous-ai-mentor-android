@@ -406,4 +406,21 @@ class UserRepositoryImpl : UserRepository {
             Result.failure(e)
         }
     }
+
+    override suspend fun getSuggestedUsers(userId: String, limit: Int): Result<List<Profile>> {
+        return try {
+            val list = supabase.from("profiles")
+                .select {
+                    filter {
+                        neq("id", userId)
+                    }
+                    limit(limit.toLong())
+                }
+                .decodeList<Profile>()
+            Result.success(list)
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
 }

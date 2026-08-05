@@ -199,10 +199,12 @@ fun AuthRouter() {
                         navController = navController
                     )
                 }
-                composable("friends") {
+                composable("friends?tab={tab}") { backStackEntry ->
+                    val tab = backStackEntry.arguments?.getString("tab")?.toIntOrNull() ?: 0
                     com.eous.mentor.features.friends.FriendsScreen(
                         userId = activeUserId,
-                        navController = navController
+                        navController = navController,
+                        initialTab = tab
                     )
                 }
                 composable("friend_profile/{targetUserId}") { backStackEntry ->
@@ -215,6 +217,11 @@ fun AuthRouter() {
                 }
             }
         }
+
+object GlobalNavigationHelper {
+    var pendingRoute: String? = null
+}
+
 
 
 // --- Double-click Prevention Navigation Helpers ---

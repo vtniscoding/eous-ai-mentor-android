@@ -38,6 +38,7 @@ interface UserRepository {
     ): Result<Unit>
 
     suspend fun searchUsers(query: String): Result<List<Profile>>
+    suspend fun getSuggestedUsers(userId: String, limit: Int = 10): Result<List<Profile>>
     suspend fun sendFriendRequest(senderId: String, receiverId: String): Result<Unit>
     suspend fun acceptFriendRequest(senderId: String, receiverId: String): Result<Unit>
     suspend fun declineOrRemoveFriendship(senderId: String, receiverId: String): Result<Unit>

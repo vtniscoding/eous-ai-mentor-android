@@ -52,7 +52,10 @@ data class HomeData(
         val educationLevel: String = "Not Set",
         val streak: Int = 0,
         val xp: Int = 0,
-        val quizzes: List<Quiz> = emptyList()
+        val quizzes: List<Quiz> = emptyList(),
+        val isStreak3Achieved: Boolean = false,
+        val isStreakLost: Boolean = false,
+        val pendingRequests: List<FriendshipWithProfile> = emptyList()
 )
 
 @Serializable

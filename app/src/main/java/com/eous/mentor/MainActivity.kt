@@ -10,9 +10,17 @@ import androidx.compose.ui.Modifier
 import com.eous.mentor.core.navigation.AuthRouter
 import com.eous.mentor.core.ui.theme.EousTheme
 
+import android.content.Intent
+import com.eous.mentor.core.navigation.GlobalNavigationHelper
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        intent?.getStringExtra("navigate_to")?.let { route ->
+            GlobalNavigationHelper.pendingRoute = route
+        }
+
         enableEdgeToEdge()
         setContent {
             EousTheme {
@@ -24,4 +32,13 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent.getStringExtra("navigate_to")?.let { route ->
+            GlobalNavigationHelper.pendingRoute = route
+        }
+    }
 }
+
