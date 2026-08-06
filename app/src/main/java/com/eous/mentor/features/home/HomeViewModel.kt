@@ -3,7 +3,6 @@ package com.eous.mentor.features.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.eous.mentor.di.RepositoryProvider
 import com.eous.mentor.di.UseCaseProvider
 import com.eous.mentor.domain.usecase.auth.LogoutUseCase
 import com.eous.mentor.domain.usecase.home.GetHomeStatsUseCase
@@ -16,7 +15,7 @@ import kotlinx.coroutines.launch
 class HomeViewModel(
     private val userId: String,
     private val getHomeStatsUseCase: GetHomeStatsUseCase = UseCaseProvider.getHomeStats,
-    private val logoutUseCase: LogoutUseCase = LogoutUseCase(RepositoryProvider.authRepository)
+    private val logoutUseCase: LogoutUseCase = UseCaseProvider.logout
 ) : ViewModel() {
     private val _state = MutableStateFlow(HomeState())
     val state: StateFlow<HomeState> = _state.asStateFlow()
@@ -25,7 +24,7 @@ class HomeViewModel(
 
     init {
         // Set initial display name from cached local session to prevent flickering
-        val cachedEmail = RepositoryProvider.sessionRepository.getCurrentUserEmail()
+        val cachedEmail = com.eous.mentor.di.RepositoryProvider.sessionRepository.getCurrentUserEmail()
         if (!cachedEmail.isNullOrEmpty()) {
             val initialName = cachedEmail.substringBefore("@").replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
             _state.update {

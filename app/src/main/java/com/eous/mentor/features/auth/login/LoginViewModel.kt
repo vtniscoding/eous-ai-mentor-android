@@ -3,7 +3,7 @@ package com.eous.mentor.features.auth.login
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eous.mentor.features.auth.friendlyAuthError
-import com.eous.mentor.di.RepositoryProvider
+import com.eous.mentor.di.UseCaseProvider
 import com.eous.mentor.domain.usecase.auth.LoginUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class LoginViewModel(
-    private val loginUseCase: LoginUseCase = LoginUseCase(RepositoryProvider.authRepository)
+    private val loginUseCase: LoginUseCase = UseCaseProvider.login
 ) : ViewModel() {
     private val _state = MutableStateFlow(LoginState())
     val state: StateFlow<LoginState> = _state.asStateFlow()

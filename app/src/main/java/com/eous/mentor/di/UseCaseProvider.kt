@@ -1,5 +1,6 @@
 package com.eous.mentor.di
 
+import com.eous.mentor.domain.usecase.auth.*
 import com.eous.mentor.domain.usecase.library.*
 import com.eous.mentor.domain.usecase.bookmark.*
 import com.eous.mentor.domain.usecase.friend.*
@@ -22,6 +23,11 @@ object UseCaseProvider {
         )
     }
 
+    // auth
+    val login by lazy { LoginUseCase(RepositoryProvider.authRepository) }
+    val register by lazy { RegisterUseCase(RepositoryProvider.authRepository) }
+    val logout by lazy { LogoutUseCase(RepositoryProvider.authRepository) }
+
     // quiz
     val getQuizzes by lazy { GetQuizzesUseCase(RepositoryProvider.userRepository) }
     val saveQuizProgress by lazy { SaveQuizProgressUseCase(RepositoryProvider.userRepository) }
@@ -29,9 +35,7 @@ object UseCaseProvider {
     val resetQuiz by lazy { ResetQuizUseCase(RepositoryProvider.userRepository) }
     val generateQuiz by lazy { GenerateQuizUseCase(RepositoryProvider.userRepository, RepositoryProvider.chatRepository) }
 
-
     // bookmark
-    val getBookmarkedMessages by lazy { GetBookmarkedMessagesUseCase(RepositoryProvider.chatRepository) }
     val toggleBookmark by lazy { ToggleBookmarkUseCase(RepositoryProvider.chatRepository) }
     val toggleSessionBookmark by lazy { ToggleSessionBookmarkUseCase(RepositoryProvider.chatRepository) }
 
@@ -55,10 +59,8 @@ object UseCaseProvider {
     val deleteSession by lazy { DeleteSessionUseCase(RepositoryProvider.chatRepository) }
     val deleteAllSessions by lazy { DeleteAllSessionsUseCase(RepositoryProvider.chatRepository) }
     val renameSession by lazy { RenameSessionUseCase(RepositoryProvider.chatRepository) }
-    val updateSessionSubject by lazy { UpdateSessionSubjectUseCase(RepositoryProvider.chatRepository) }
     val getSessionMessages by lazy { GetSessionMessagesUseCase(RepositoryProvider.chatRepository) }
     val insertMessage by lazy { InsertMessageUseCase(RepositoryProvider.chatRepository) }
-    val deleteMessage by lazy { DeleteMessageUseCase(RepositoryProvider.chatRepository) }
     val uploadChatImage by lazy { UploadChatImageUseCase(RepositoryProvider.chatRepository) }
     val requestAiReply by lazy { RequestAiReplyUseCase(RepositoryProvider.chatRepository, RepositoryProvider.userRepository) }
 
@@ -70,5 +72,4 @@ object UseCaseProvider {
     val uploadAvatar by lazy { UploadAvatarUseCase(RepositoryProvider.userRepository) }
     val deleteAvatar by lazy { DeleteAvatarUseCase(RepositoryProvider.userRepository) }
     val saveOnboardingProfile by lazy { SaveOnboardingProfileUseCase(RepositoryProvider.userRepository) }
-    val recordUserActivity by lazy { RecordUserActivityUseCase(RepositoryProvider.userRepository) }
 }
