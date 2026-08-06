@@ -42,6 +42,8 @@ import com.eous.mentor.core.ui.theme.*
 import kotlinx.coroutines.launch
 import io.github.jan.supabase.auth.auth
 
+import androidx.compose.ui.platform.testTag
+
 @Composable
 fun LoginFormScreen(
     navController: NavController,
@@ -96,7 +98,8 @@ fun LoginFormScreen(
                         .clip(RoundedCornerShape(16.dp))
                         .background(Color(0xFFFFD1D1))
                         .border(1.5.dp, Color(0xFFE53935), RoundedCornerShape(16.dp))
-                        .padding(vertical = 12.dp, horizontal = 16.dp),
+                        .padding(vertical = 12.dp, horizontal = 16.dp)
+                        .testTag("error_banner"),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -133,7 +136,7 @@ fun LoginFormScreen(
                         placeholder = { Text("you@example.com", color = Color.Gray.copy(alpha = 0.5f)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
-                        modifier = Modifier.fillMaxWidth().height(54.dp),
+                        modifier = Modifier.fillMaxWidth().height(54.dp).testTag("email_input"),
                         shape = RoundedCornerShape(16.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = Color.Black,
@@ -172,7 +175,7 @@ fun LoginFormScreen(
                             }
                         },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                        modifier = Modifier.fillMaxWidth().height(54.dp),
+                        modifier = Modifier.fillMaxWidth().height(54.dp).testTag("password_input"),
                         shape = RoundedCornerShape(16.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = Color.Black,
@@ -246,6 +249,7 @@ fun LoginFormScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp)
+                        .testTag("login_button")
                 ) {
                     if (state.isLoading) {
                         CircularProgressIndicator(

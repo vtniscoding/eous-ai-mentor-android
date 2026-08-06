@@ -16,6 +16,16 @@ import com.eous.mentor.domain.repository.SessionRepository
 import com.eous.mentor.domain.usecase.profile.GetProfileUseCase
 import com.eous.mentor.domain.usecase.session.IssueLocalSessionUseCase
 
+private val EMAIL_ADDRESS_PATTERN = java.util.regex.Pattern.compile(
+    "[a-zA-Z0-9\\+\\.\\_\\%\\-\\+]{1,256}" +
+    "\\@" +
+    "[a-zA-Z0-9][a-zA-Z0-9\\-]{0,64}" +
+    "(" +
+    "\\." +
+    "[a-zA-Z0-9][a-zA-Z0-9\\-]{0,25}" +
+    ")+"
+)
+
 class LoginViewModel(
     private val loginUseCase: LoginUseCase = UseCaseProvider.login,
     private val issueLocalSessionUseCase: IssueLocalSessionUseCase = UseCaseProvider.issueLocalSession,
@@ -53,7 +63,7 @@ class LoginViewModel(
             _state.update { it.copy(error = "Email and password are required.") }
             return
         }
-        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(currentState.email).matches()) {
+        if (!EMAIL_ADDRESS_PATTERN.matcher(currentState.email).matches()) {
             _state.update { it.copy(error = "Please enter a valid email address.") }
             return
         }

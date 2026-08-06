@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.eous.mentor.R
 import com.eous.mentor.core.ui.theme.Inter
+import androidx.compose.ui.platform.testTag
 
 private val PrimaryPurple = Color(0xFF5B29A2)
 private val DarkPurpleCardBg = Color(0xFF5821A6)
@@ -264,6 +265,7 @@ fun ProfileScreen(
                                             viewModel.setSelectedLevel(option.id)
                                         }
                                         .padding(horizontal = 16.dp, vertical = 10.dp)
+                                        .testTag("edu_option_${option.id}")
                                 ) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically
@@ -341,7 +343,8 @@ fun ProfileScreen(
                                                 }
                                                 viewModel.setSelectedSubjects(updated)
                                             }
-                                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                                            .testTag("subject_option_$subject"),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
@@ -405,6 +408,7 @@ fun ProfileScreen(
                                             viewModel.setSelectedStyle(option.id)
                                         }
                                         .padding(horizontal = 16.dp, vertical = 10.dp)
+                                        .testTag("style_option_${option.id}")
                                 ) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically
@@ -466,26 +470,34 @@ fun ProfileScreen(
                                         viewModel.saveProfile(
                                             userId = userId,
                                             onSuccess = {
-                                                Toast.makeText(
-                                                    context,
-                                                    "Profile updated successfully!",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
+                                                try {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Profile updated successfully!",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                } catch (e: Exception) {
+                                                    e.printStackTrace()
+                                                }
                                                 onComplete()
                                             },
                                             onError = {
-                                                Toast.makeText(
-                                                    context,
-                                                    "Failed to update profile",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
+                                                try {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Failed to update profile",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                } catch (e: Exception) {
+                                                    e.printStackTrace()
+                                                }
                                             }
                                         )
                                     },
                                     interactionSource = completeInteractionSource,
                                     shape = RoundedCornerShape(20.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = ButtonPurpleBg),
-                                    modifier = Modifier.fillMaxSize()
+                                    modifier = Modifier.fillMaxSize().testTag("complete_button")
                                 ) {
                                     if (state.isSaving) {
                                         CircularProgressIndicator(
