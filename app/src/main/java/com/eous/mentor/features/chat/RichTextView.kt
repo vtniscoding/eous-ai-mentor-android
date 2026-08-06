@@ -10,6 +10,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.eous.mentor.domain.model.AnswerParser
+import com.eous.mentor.domain.model.ChatMessage
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -247,7 +249,7 @@ fun RichTextView(
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun RichChatThreadView(
-    qaPairs: List<Pair<com.eous.mentor.domain.model.ChatMessage, com.eous.mentor.domain.model.ChatMessage?>>,
+    qaPairs: List<Pair<ChatMessage, ChatMessage?>>,
     isThinking: Boolean,
     inputText: String,
     pendingImageUrl: String?,

@@ -51,6 +51,8 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.eous.mentor.R
 import com.eous.mentor.core.ui.theme.EousPurple
+import com.eous.mentor.domain.model.AnswerParser
+import com.eous.mentor.domain.model.AnswerType
 import com.eous.mentor.domain.model.ChatMessage
 import com.eous.mentor.domain.model.ChatSession
 import java.text.SimpleDateFormat

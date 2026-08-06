@@ -1,4 +1,4 @@
-package com.eous.mentor.features.chat
+package com.eous.mentor.domain.model
 
 enum class AnswerType {
     REFUSAL,

@@ -8,6 +8,8 @@ import com.eous.mentor.domain.model.DashboardStats
 import com.eous.mentor.domain.model.Friendship
 import com.eous.mentor.domain.model.Profile
 import com.eous.mentor.domain.usecase.progress.GetProgressStatsUseCase
+import com.eous.mentor.domain.usecase.friend.*
+import com.eous.mentor.di.UseCaseProvider
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,10 +32,11 @@ data class FriendProfileState(
 class FriendProfileViewModel(
     private val currentUserId: String,
     private val targetUserId: String,
-    private val getProgressStatsUseCase: GetProgressStatsUseCase = GetProgressStatsUseCase(
-        RepositoryProvider.userRepository,
-        RepositoryProvider.chatRepository
-    )
+    private val getProgressStatsUseCase: GetProgressStatsUseCase = UseCaseProvider.getProgressStats,
+    private val getFriendProfileUseCase: GetFriendProfileUseCase = UseCaseProvider.getFriendProfile,
+    private val sendFriendRequestUseCase: SendFriendRequestUseCase = UseCaseProvider.sendFriendRequest,
+    private val acceptFriendRequestUseCase: AcceptFriendRequestUseCase = UseCaseProvider.acceptFriendRequest,
+    private val removeFriendshipUseCase: RemoveFriendshipUseCase = UseCaseProvider.removeFriendship
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(FriendProfileState())
@@ -49,23 +52,18 @@ class FriendProfileViewModel(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             try {
-                // Fetch profile of target user
-                val profileRes = withContext(Dispatchers.IO) {
-                    RepositoryProvider.userRepository.getProfile(targetUserId)
+                // Fetch profile of target user and friends list
+                val profileData = withContext(Dispatchers.IO) {
+                    getFriendProfileUseCase(targetUserId).getOrNull()
                 }
-                val fetchedProfile = profileRes.getOrNull()
+                val fetchedProfile = profileData?.profile
+                val friends = profileData?.friendsList ?: emptyList()
 
                 // Fetch stats of target user, recordActivity = false
                 val statsRes = withContext(Dispatchers.IO) {
                     getProgressStatsUseCase(targetUserId, recordActivity = false)
                 }
                 val fetchedStats = statsRes.getOrNull()
-
-                // Fetch target user's friends to count them
-                val friendsRes = withContext(Dispatchers.IO) {
-                    RepositoryProvider.userRepository.getFriendsList(targetUserId)
-                }
-                val friends = friendsRes.getOrDefault(emptyList())
 
                 // Fetch friendship relation between current and target user
                 val sentFriendship = withContext(Dispatchers.IO) {
@@ -117,7 +115,7 @@ class FriendProfileViewModel(
             _state.update { it.copy(actionLoading = true) }
             try {
                 val res = withContext(Dispatchers.IO) {
-                    RepositoryProvider.userRepository.sendFriendRequest(currentUserId, targetUserId)
+                    sendFriendRequestUseCase(currentUserId, targetUserId)
                 }
                 if (res.isSuccess) {
                     loadData()
@@ -135,7 +133,7 @@ class FriendProfileViewModel(
             _state.update { it.copy(actionLoading = true) }
             try {
                 val res = withContext(Dispatchers.IO) {
-                    RepositoryProvider.userRepository.acceptFriendRequest(targetUserId, currentUserId)
+                    acceptFriendRequestUseCase(targetUserId, currentUserId)
                 }
                 if (res.isSuccess) {
                     loadData()
@@ -153,7 +151,7 @@ class FriendProfileViewModel(
             _state.update { it.copy(actionLoading = true) }
             try {
                 val res = withContext(Dispatchers.IO) {
-                    RepositoryProvider.userRepository.declineOrRemoveFriendship(currentUserId, targetUserId)
+                    removeFriendshipUseCase(currentUserId, targetUserId)
                 }
                 if (res.isSuccess) {
                     loadData()

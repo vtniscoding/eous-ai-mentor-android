@@ -1,9 +1,11 @@
-package com.eous.mentor.domain.usecase.user
+package com.eous.mentor.domain.usecase.profile
 
 import com.eous.mentor.domain.model.Profile
 import com.eous.mentor.domain.repository.UserRepository
 
-class GetProfileUseCase(private val repository: UserRepository) {
+class GetProfileUseCase(
+    private val userRepository: UserRepository
+) {
     suspend operator fun invoke(userId: String): Result<Profile?> =
-        repository.getProfile(userId)
+        userRepository.getProfile(userId)
 }

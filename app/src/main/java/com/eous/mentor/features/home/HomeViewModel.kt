@@ -4,6 +4,7 @@ package com.eous.mentor.features.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eous.mentor.di.RepositoryProvider
+import com.eous.mentor.di.UseCaseProvider
 import com.eous.mentor.domain.usecase.auth.LogoutUseCase
 import com.eous.mentor.domain.usecase.home.GetHomeStatsUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +15,7 @@ import kotlinx.coroutines.launch
 
 class HomeViewModel(
     private val userId: String,
-    private val getHomeStatsUseCase: GetHomeStatsUseCase = GetHomeStatsUseCase(RepositoryProvider.userRepository, RepositoryProvider.chatRepository),
+    private val getHomeStatsUseCase: GetHomeStatsUseCase = UseCaseProvider.getHomeStats,
     private val logoutUseCase: LogoutUseCase = LogoutUseCase(RepositoryProvider.authRepository)
 ) : ViewModel() {
     private val _state = MutableStateFlow(HomeState())

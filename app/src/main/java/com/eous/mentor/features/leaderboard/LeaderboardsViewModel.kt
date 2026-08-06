@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.eous.mentor.di.RepositoryProvider
 import com.eous.mentor.domain.model.Profile
 import com.eous.mentor.domain.usecase.progress.GetProgressStatsUseCase
+import com.eous.mentor.domain.usecase.friend.GetFriendProfileUseCase
+import com.eous.mentor.di.UseCaseProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,10 +33,8 @@ data class LeaderboardsState(
 
 class LeaderboardsViewModel(
     private val userId: String,
-    private val getProgressStatsUseCase: GetProgressStatsUseCase = GetProgressStatsUseCase(
-        RepositoryProvider.userRepository,
-        RepositoryProvider.chatRepository
-    )
+    private val getProgressStatsUseCase: GetProgressStatsUseCase = UseCaseProvider.getProgressStats,
+    private val getFriendProfileUseCase: GetFriendProfileUseCase = UseCaseProvider.getFriendProfile
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LeaderboardsState())
@@ -50,23 +50,18 @@ class LeaderboardsViewModel(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             try {
-                // Fetch profile
-                val profRes = withContext(Dispatchers.IO) {
-                    RepositoryProvider.userRepository.getProfile(userId)
+                // Fetch profile and friends list
+                val profileData = withContext(Dispatchers.IO) {
+                    getFriendProfileUseCase(userId).getOrNull()
                 }
-                val fetchedProfile = profRes.getOrNull()
+                val fetchedProfile = profileData?.profile
+                val friends = profileData?.friendsList ?: emptyList()
 
                 // Fetch stats
                 val statsRes = withContext(Dispatchers.IO) {
                     getProgressStatsUseCase(userId)
                 }
                 val fetchedStats = statsRes.getOrNull()
-
-                // Fetch friends list
-                val friendsRes = withContext(Dispatchers.IO) {
-                    RepositoryProvider.userRepository.getFriendsList(userId)
-                }
-                val friends = friendsRes.getOrDefault(emptyList())
 
                 val name = fetchedProfile?.display_name
                     ?: fetchedProfile?.email?.substringBefore("@")

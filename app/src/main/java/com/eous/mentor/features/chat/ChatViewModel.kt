@@ -4,10 +4,12 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.eous.mentor.core.util.QuizParser
-import com.eous.mentor.di.RepositoryProvider
+import com.eous.mentor.di.UseCaseProvider
 import com.eous.mentor.domain.model.*
-import com.eous.mentor.domain.repository.ChatRepository
+import com.eous.mentor.domain.usecase.chat.*
+import com.eous.mentor.domain.usecase.bookmark.ToggleBookmarkUseCase
+import com.eous.mentor.domain.usecase.profile.GetProfileUseCase
+import com.eous.mentor.domain.usecase.profile.UpdateExplanationStyleUseCase
 import java.util.UUID
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,11 +19,20 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class ChatViewModel(
-        private val userId: String,
-        initialQuestion: String = "",
-        private val chatRepository: ChatRepository = RepositoryProvider.chatRepository,
-        private val userRepository: com.eous.mentor.domain.repository.UserRepository =
-                RepositoryProvider.userRepository
+    private val userId: String,
+    initialQuestion: String = "",
+    private val getProfileUseCase: GetProfileUseCase = UseCaseProvider.getProfile,
+    private val getSessionsUseCase: GetSessionsUseCase = UseCaseProvider.getSessions,
+    private val createSessionUseCase: CreateSessionUseCase = UseCaseProvider.createSession,
+    private val deleteSessionUseCase: DeleteSessionUseCase = UseCaseProvider.deleteSession,
+    private val deleteAllSessionsUseCase: DeleteAllSessionsUseCase = UseCaseProvider.deleteAllSessions,
+    private val renameSessionUseCase: RenameSessionUseCase = UseCaseProvider.renameSession,
+    private val getSessionMessagesUseCase: GetSessionMessagesUseCase = UseCaseProvider.getSessionMessages,
+    private val insertMessageUseCase: InsertMessageUseCase = UseCaseProvider.insertMessage,
+    private val requestAiReplyUseCase: RequestAiReplyUseCase = UseCaseProvider.requestAiReply,
+    private val toggleBookmarkUseCase: ToggleBookmarkUseCase = UseCaseProvider.toggleBookmark,
+    private val uploadChatImageUseCase: UploadChatImageUseCase = UseCaseProvider.uploadChatImage,
+    private val updateExplanationStyleUseCase: UpdateExplanationStyleUseCase = UseCaseProvider.updateExplanationStyle
 ) : ViewModel() {
     private val _state = MutableStateFlow(ChatState())
     val state: StateFlow<ChatState> = _state.asStateFlow()
@@ -38,7 +49,7 @@ class ChatViewModel(
 
     private fun loadUserProfile() {
         viewModelScope.launch {
-            userRepository.getProfile(userId).onSuccess { profile ->
+            getProfileUseCase(userId).onSuccess { profile ->
                 userProfile = profile
                 profile?.explanation_style?.let { style ->
                     _state.update { it.copy(explanationStyle = style) }
@@ -53,8 +64,7 @@ class ChatViewModel(
         viewModelScope.launch {
             val startTime = System.currentTimeMillis()
             _state.update { it.copy(isLoadingSessions = true) }
-            chatRepository
-                    .getSessions(userId)
+            getSessionsUseCase(userId)
                     .onSuccess { sessions ->
                         val elapsedTime = System.currentTimeMillis() - startTime
                         val minDurationMs = 2600L
@@ -100,8 +110,7 @@ class ChatViewModel(
 
     fun createNewSession(initialQuestion: String = "") {
         viewModelScope.launch {
-            chatRepository
-                    .createSession(userId)
+            createSessionUseCase(userId)
                     .onSuccess { session ->
                         sessionMessagesCache[session.id!!] = emptyList()
                         _state.update { state ->
@@ -151,8 +160,7 @@ class ChatViewModel(
 
     fun deleteSession(sessionId: String) {
         viewModelScope.launch {
-            chatRepository
-                    .deleteSession(sessionId)
+            deleteSessionUseCase(sessionId)
                     .onSuccess {
                         sessionMessagesCache.remove(sessionId)
                         _state.update { state ->
@@ -175,8 +183,7 @@ class ChatViewModel(
 
     fun renameSession(sessionId: String, newTitle: String) {
         viewModelScope.launch {
-            chatRepository
-                    .updateSessionTitle(sessionId, newTitle)
+            renameSessionUseCase(sessionId, newTitle)
                     .onSuccess {
                         _state.update { state ->
                             val updatedSessions =
@@ -201,8 +208,7 @@ class ChatViewModel(
 
     fun deleteAllSessions() {
         viewModelScope.launch {
-            chatRepository
-                    .deleteAllSessions(userId)
+            deleteAllSessionsUseCase(userId)
                     .onSuccess {
                         sessionMessagesCache.clear()
                         _state.update {
@@ -226,8 +232,7 @@ class ChatViewModel(
 
     private fun loadMessages(sessionId: String) {
         viewModelScope.launch {
-            chatRepository
-                    .getMessages(sessionId)
+            getSessionMessagesUseCase(sessionId)
                     .onSuccess { messages ->
                         sessionMessagesCache[sessionId] = messages
                         if (_state.value.activeSession?.id == sessionId) {
@@ -251,7 +256,7 @@ class ChatViewModel(
             sessions.forEach { session ->
                 val id = session.id ?: return@forEach
                 if (!sessionMessagesCache.containsKey(id)) {
-                    chatRepository.getMessages(id).onSuccess { messages ->
+                    getSessionMessagesUseCase(id).onSuccess { messages ->
                         sessionMessagesCache[id] = messages
                         if (_state.value.activeSession?.id == id) {
                             _state.update {
@@ -291,7 +296,7 @@ class ChatViewModel(
         viewModelScope.launch {
             val session = _state.value.activeSession ?: run {
                 var createdSession: ChatSession? = null
-                chatRepository.createSession(userId)
+                createSessionUseCase(userId)
                     .onSuccess { newSession ->
                         sessionMessagesCache[newSession.id!!] = emptyList()
                         _state.update { state ->
@@ -312,16 +317,14 @@ class ChatViewModel(
             } ?: return@launch
 
             // 1. Insert user message into DB
-            val userMsg =
-                    ChatMessage(
-                            user_id = userId,
-                            session_id = session.id,
-                            role = "user",
-                            content = currentInput,
-                            image = imageUrl
-                    )
-            chatRepository
-                    .insertMessage(userMsg)
+            val userMsg = ChatMessage(
+                user_id = userId,
+                session_id = session.id,
+                role = "user",
+                content = currentInput,
+                image = imageUrl
+            )
+            insertMessageUseCase(userMsg)
                     .onSuccess { savedUserMsg ->
                         _state.update { state ->
                             val updated = state.messages + savedUserMsg
@@ -331,19 +334,14 @@ class ChatViewModel(
 
                         // If this is the first message in the session, update the session title
                         if (session.title == "New Chat" && _state.value.messages.size == 1) {
-                            val rawTitle =
-                                    if (currentInput.isNotEmpty()) currentInput
-                                    else "Image Attachment"
-                            val newTitle =
-                                    if (rawTitle.length > 40) rawTitle.take(40) + "..."
-                                    else rawTitle
-                            chatRepository.updateSessionTitle(session.id!!, newTitle).onSuccess {
+                            val rawTitle = if (currentInput.isNotEmpty()) currentInput else "Image Attachment"
+                            val newTitle = if (rawTitle.length > 40) rawTitle.take(40) + "..." else rawTitle
+                            renameSessionUseCase(session.id!!, newTitle).onSuccess {
                                 val updatedSession = session.copy(title = newTitle)
                                 _state.update { state ->
-                                    val updatedSessions =
-                                            state.sessions.map { s ->
-                                                if (s.id == session.id) updatedSession else s
-                                            }
+                                    val updatedSessions = state.sessions.map { s ->
+                                        if (s.id == session.id) updatedSession else s
+                                    }
                                     state.copy(
                                             sessions = updatedSessions,
                                             activeSession = updatedSession
@@ -355,180 +353,87 @@ class ChatViewModel(
                         // 2. Show thinking indicator and call AI
                         _state.update { it.copy(isAiResponding = true) }
 
-                        aiResponseJob =
-                                viewModelScope.launch {
-                                    val historyBeforeLast = _state.value.messages
-                                            .dropLast(1)
-                                            .filter { msg ->
-                                                !(msg.role == "ai" && !msg.quiz_id.isNullOrBlank()) &&
-                                                !(msg.role == "user" && msg.content == "Generate a practice quiz on this topic")
-                                            }
-                                    val context =
-                                            UserContext(
-                                                    education_level =
-                                                            userProfile?.education_level
-                                                                    ?: "high_school",
-                                                    explanation_style =
-                                                            _state.value.explanationStyle,
-                                                    subjects =
-                                                            userProfile?.subjects ?: emptyList()
-                                            )
-                                    chatRepository
-                                            .getAiResponse(
-                                                    message = currentInput,
-                                                    history = historyBeforeLast,
-                                                    imageUrl = imageUrl,
-                                                    userContext = context
-                                            )
-                                            .onSuccess { aiResponse ->
-                                                if (!aiResponse.error.isNullOrBlank()) {
-                                                    _state.update {
-                                                        it.copy(
-                                                                isSending = false,
-                                                                isAiResponding = false,
-                                                                errorMessage = aiResponse.error
-                                                        )
-                                                    }
-                                                    return@onSuccess
-                                                }
-
-                                                // Detect Refusal
-                                                val parsed = AnswerParser.parse(aiResponse.reply, aiResponse.subject)
-                                                if (parsed.type == AnswerType.REFUSAL) {
-                                                    val isOnlyMessage = _state.value.messages.size <= 1
-                                                    if (isOnlyMessage) {
-                                                        chatRepository.deleteSession(session.id!!)
-                                                        _state.update { state ->
-                                                            val updatedSessions = state.sessions.filter { it.id != session.id }
-                                                            sessionMessagesCache.remove(session.id)
-                                                            state.copy(
-                                                                    sessions = updatedSessions,
-                                                                    activeSession = null,
-                                                                    messages = emptyList(),
-                                                                    isSending = false,
-                                                                    isAiResponding = false,
-                                                                    errorMessage = "Cannot assist with this request. I can only assist with academic and study-related queries."
-                                                            )
-                                                        }
-                                                    } else {
-                                                        savedUserMsg.id?.let { msgId ->
-                                                            chatRepository.deleteMessage(msgId)
-                                                        }
-                                                        _state.update { state ->
-                                                            val filtered = state.messages.filter { it.id != savedUserMsg.id }
-                                                            sessionMessagesCache[session.id!!] = filtered
-                                                            state.copy(
-                                                                    messages = filtered,
-                                                                    isSending = false,
-                                                                    isAiResponding = false,
-                                                                    errorMessage = "Cannot assist with this request. I can only assist with academic and study-related queries."
-                                                            )
-                                                        }
-                                                    }
-                                                    return@onSuccess
-                                                }
-
-                                                // 3. Check if AI generated a Quiz
-                                                var createdQuizId: String? = null
-                                                var effectiveQuiz = aiResponse.quiz
-                                                var effectiveReply = aiResponse.reply
-
-                                                // Client-side fallback: if Edge Function didn't parse quiz,
-                                                // try to extract it from the reply text
-                                                if (effectiveQuiz == null || effectiveQuiz.questions.isEmpty()) {
-                                                    val fallbackResult = QuizParser.extractFromReply(effectiveReply)
-                                                    if (fallbackResult != null) {
-                                                        effectiveQuiz = fallbackResult.first
-                                                        effectiveReply = fallbackResult.second
-                                                    }
-                                                }
-
-                                                if (effectiveQuiz != null && effectiveQuiz.questions.isNotEmpty()) {
-                                                    val topicName =
-                                                            aiResponse.subject
-                                                                    ?: effectiveQuiz.topic.ifBlank { "General" }
-                                                    val quizTitle =
-                                                            effectiveQuiz.title.ifBlank { "Bài tập $topicName" }
-                                                    // Override difficulty with user's actual education level
-                                                    val quizDifficulty = userProfile?.education_level
-                                                            ?: effectiveQuiz.difficulty.ifBlank { "high_school" }
-                                                    val createRes =
-                                                            userRepository.createQuiz(
-                                                                    userId = userId,
-                                                                    topic = topicName,
-                                                                    title = quizTitle,
-                                                                    totalQuestions =
-                                                                            effectiveQuiz.questions.size,
-                                                                    questions = effectiveQuiz.questions,
-                                                                    difficulty = quizDifficulty
-                                                            )
-                                                    if (createRes.isSuccess) {
-                                                        createdQuizId = createRes.getOrNull()?.id
-                                                    }
-                                                }
-
-                                                // 4. Insert AI response into DB
-                                                val replyContent = if (createdQuizId != null) {
-                                                    "I have designed the questions above to help you review your knowledge. Don't hesitate to try your best, as every mistake is an opportunity to learn even more deeply. Happy learning, and keep up your eager spirit!"
-                                                } else {
-                                                    effectiveReply
-                                                }
-                                                val aiMsg =
-                                                        ChatMessage(
-                                                                user_id = userId,
-                                                                session_id = session.id,
-                                                                role = "ai",
-                                                                content = replyContent,
-                                                                subject = aiResponse.subject,
-                                                                quiz_id = createdQuizId
-                                                        )
-                                                chatRepository
-                                                        .insertMessage(aiMsg)
-                                                        .onSuccess { savedAiMsg ->
-                                                            val recognizedSubject = aiResponse.subject ?: "General"
-                                                            if (session.subject != recognizedSubject) {
-                                                                chatRepository.updateSessionSubject(session.id!!, recognizedSubject)
-                                                            }
-                                                            _state.update { state ->
-                                                                val updated =
-                                                                        state.messages + savedAiMsg
-                                                                sessionMessagesCache[session.id!!] =
-                                                                        updated
-                                                                val updatedSessions = state.sessions.map { s ->
-                                                                    if (s.id == session.id) s.copy(subject = recognizedSubject) else s
-                                                                }
-                                                                val updatedActiveSession = state.activeSession?.let {
-                                                                    if (it.id == session.id) it.copy(subject = recognizedSubject) else it
-                                                                }
-                                                                state.copy(
-                                                                        messages = updated,
-                                                                        sessions = updatedSessions,
-                                                                        activeSession = updatedActiveSession,
-                                                                        isSending = false,
-                                                                        isAiResponding = false
-                                                                )
-                                                            }
-                                                        }
-                                                        .onFailure { e ->
-                                                            _state.update {
-                                                                it.copy(
-                                                                        isSending = false,
-                                                                        isAiResponding = false,
-                                                                        errorMessage = e.message
-                                                                )
-                                                            }
-                                                        }
-                                            }
-                                            .onFailure { e ->
-                                                _state.update {
-                                                    it.copy(
-                                                            isSending = false,
-                                                            isAiResponding = false,
-                                                            errorMessage = e.message
-                                                    )
-                                                }
-                                            }
+                        aiResponseJob = viewModelScope.launch {
+                            val historyBeforeLast = _state.value.messages
+                                .dropLast(1)
+                                .filter { msg ->
+                                    !(msg.role == "ai" && !msg.quiz_id.isNullOrBlank()) &&
+                                    !(msg.role == "user" && msg.content == "Generate a practice quiz on this topic")
                                 }
+                            val context = UserContext(
+                                education_level = userProfile?.education_level ?: "high_school",
+                                explanation_style = _state.value.explanationStyle,
+                                subjects = userProfile?.subjects ?: emptyList()
+                            )
+                            
+                            requestAiReplyUseCase(
+                                userId = userId,
+                                sessionId = session.id!!,
+                                currentInput = currentInput,
+                                imageUrl = imageUrl,
+                                historyBeforeLast = historyBeforeLast,
+                                userContext = context,
+                                isOnlyMessage = _state.value.messages.size <= 1,
+                                savedUserMsgId = savedUserMsg.id,
+                                sessionSubject = session.subject
+                            ).onSuccess { aiReplyResult ->
+                                val savedAiMsg = aiReplyResult.message
+                                _state.update { state ->
+                                    val updated = state.messages + savedAiMsg
+                                    sessionMessagesCache[session.id!!] = updated
+                                    val recognizedSubject = aiReplyResult.updatedSubject ?: session.subject
+                                    val updatedSessions = state.sessions.map { s ->
+                                        if (s.id == session.id) s.copy(subject = recognizedSubject) else s
+                                    }
+                                    val updatedActiveSession = state.activeSession?.let {
+                                        if (it.id == session.id) it.copy(subject = recognizedSubject) else it
+                                    }
+                                    state.copy(
+                                        messages = updated,
+                                        sessions = updatedSessions,
+                                        activeSession = updatedActiveSession,
+                                        isSending = false,
+                                        isAiResponding = false
+                                    )
+                                }
+                            }.onFailure { e ->
+                                if (e.message?.contains("Cannot assist") == true) {
+                                    if (_state.value.messages.size <= 1) {
+                                        _state.update { state ->
+                                            val updatedSessions = state.sessions.filter { it.id != session.id }
+                                            sessionMessagesCache.remove(session.id)
+                                            state.copy(
+                                                sessions = updatedSessions,
+                                                activeSession = null,
+                                                messages = emptyList(),
+                                                isSending = false,
+                                                isAiResponding = false,
+                                                errorMessage = e.message
+                                            )
+                                        }
+                                    } else {
+                                        _state.update { state ->
+                                            val filtered = state.messages.filter { it.id != savedUserMsg.id }
+                                            sessionMessagesCache[session.id!!] = filtered
+                                            state.copy(
+                                                messages = filtered,
+                                                isSending = false,
+                                                isAiResponding = false,
+                                                errorMessage = e.message
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    _state.update {
+                                        it.copy(
+                                            isSending = false,
+                                            isAiResponding = false,
+                                            errorMessage = e.message
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                     .onFailure { e ->
                         _state.update { it.copy(isSending = false, errorMessage = e.message) }
@@ -552,15 +457,10 @@ class ChatViewModel(
 
         // Optimistic UI update
         _state.update { state ->
-            val updatedMessages =
-                    state.messages.map {
-                        if (it.id == msgId)
-                                it.copy(
-                                        is_bookmarked = newBookmarked,
-                                        bookmark_folder = if (newBookmarked) folder else null
-                                )
-                        else it
-                    }
+            val updatedMessages = state.messages.map {
+                if (it.id == msgId) it.copy(is_bookmarked = newBookmarked, bookmark_folder = if (newBookmarked) folder else null)
+                else it
+            }
             if (message.session_id != null) {
                 sessionMessagesCache[message.session_id] = updatedMessages
             }
@@ -568,31 +468,24 @@ class ChatViewModel(
         }
 
         viewModelScope.launch {
-            chatRepository.toggleBookmark(
-                            messageId = msgId,
-                            userId = userId,
-                            isBookmarked = newBookmarked,
-                            folder = folder
-                    )
-                    .onFailure {
-                        // Revert on failure
-                        _state.update { state ->
-                            val revertedMessages =
-                                    state.messages.map {
-                                        if (it.id == msgId)
-                                                it.copy(
-                                                        is_bookmarked = !newBookmarked,
-                                                        bookmark_folder =
-                                                                if (!newBookmarked) folder else null
-                                                )
-                                        else it
-                                    }
-                            if (message.session_id != null) {
-                                sessionMessagesCache[message.session_id] = revertedMessages
-                            }
-                            state.copy(messages = revertedMessages, errorMessage = it.message)
-                        }
+            toggleBookmarkUseCase(
+                    messageId = msgId,
+                    userId = userId,
+                    isBookmarked = newBookmarked,
+                    folder = folder
+            ).onFailure {
+                // Revert on failure
+                _state.update { state ->
+                    val revertedMessages = state.messages.map {
+                        if (it.id == msgId) it.copy(is_bookmarked = !newBookmarked, bookmark_folder = if (!newBookmarked) folder else null)
+                        else it
                     }
+                    if (message.session_id != null) {
+                        sessionMessagesCache[message.session_id] = revertedMessages
+                    }
+                    state.copy(messages = revertedMessages, errorMessage = it.message)
+                }
+            }
         }
     }
 
@@ -608,8 +501,7 @@ class ChatViewModel(
                 inputStream.close()
 
                 val fileName = "${UUID.randomUUID()}.jpg"
-                chatRepository
-                        .uploadImage(userId, fileName, bytes)
+                uploadChatImageUseCase(userId, fileName, bytes)
                         .onSuccess { url -> _state.update { it.copy(pendingImageUrl = url) } }
                         .onFailure { e ->
                             _state.update {
@@ -625,7 +517,7 @@ class ChatViewModel(
     fun onExplanationStyleChanged(style: String) {
         _state.update { it.copy(explanationStyle = style, isStyleMenuExpanded = false) }
         userProfile = userProfile?.copy(explanation_style = style)
-        viewModelScope.launch { userRepository.updateExplanationStyle(userId, style) }
+        viewModelScope.launch { updateExplanationStyleUseCase(userId, style) }
     }
 
     fun toggleStyleMenu() {

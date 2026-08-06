@@ -3,6 +3,7 @@ package com.eous.mentor.features.progress
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eous.mentor.di.RepositoryProvider
+import com.eous.mentor.di.UseCaseProvider
 import com.eous.mentor.domain.model.DashboardStats
 import com.eous.mentor.domain.usecase.progress.GetProgressStatsUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,10 +19,7 @@ data class ProgressState(
 
 class ProgressViewModel(
     private val userId: String,
-    private val getProgressStatsUseCase: GetProgressStatsUseCase = GetProgressStatsUseCase(
-        RepositoryProvider.userRepository,
-        RepositoryProvider.chatRepository
-    )
+    private val getProgressStatsUseCase: GetProgressStatsUseCase = UseCaseProvider.getProgressStats
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProgressState())

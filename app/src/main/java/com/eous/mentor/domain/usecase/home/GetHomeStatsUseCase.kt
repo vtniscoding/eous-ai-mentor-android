@@ -3,13 +3,14 @@ package com.eous.mentor.domain.usecase.home
 import com.eous.mentor.domain.model.HomeData
 import com.eous.mentor.domain.repository.ChatRepository
 import com.eous.mentor.domain.repository.UserRepository
+import com.eous.mentor.domain.repository.SessionRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
 class GetHomeStatsUseCase(
     private val userRepository: UserRepository,
     private val chatRepository: ChatRepository,
-    private val sessionRepository: com.eous.mentor.domain.repository.SessionRepository = com.eous.mentor.di.RepositoryProvider.sessionRepository
+    private val sessionRepository: SessionRepository
 ) {
     suspend operator fun invoke(userId: String): Result<HomeData> = coroutineScope {
         try {

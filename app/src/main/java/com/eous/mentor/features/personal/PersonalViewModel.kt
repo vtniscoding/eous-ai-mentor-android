@@ -3,8 +3,12 @@ package com.eous.mentor.features.personal
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eous.mentor.di.RepositoryProvider
+import com.eous.mentor.di.UseCaseProvider
 import com.eous.mentor.domain.model.DashboardStats
 import com.eous.mentor.domain.model.Profile
+import com.eous.mentor.domain.usecase.profile.DeleteAvatarUseCase
+import com.eous.mentor.domain.usecase.profile.GetProfileUseCase
+import com.eous.mentor.domain.usecase.profile.UploadAvatarUseCase
 import com.eous.mentor.domain.usecase.progress.GetProgressStatsUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -31,10 +35,10 @@ data class PersonalState(
 
 class PersonalViewModel(
     private val userId: String,
-    private val getProgressStatsUseCase: GetProgressStatsUseCase = GetProgressStatsUseCase(
-        RepositoryProvider.userRepository,
-        RepositoryProvider.chatRepository
-    )
+    private val getProgressStatsUseCase: GetProgressStatsUseCase = UseCaseProvider.getProgressStats,
+    private val getProfileUseCase: GetProfileUseCase = UseCaseProvider.getProfile,
+    private val uploadAvatarUseCase: UploadAvatarUseCase = UseCaseProvider.uploadAvatar,
+    private val deleteAvatarUseCase: DeleteAvatarUseCase = UseCaseProvider.deleteAvatar
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(PersonalState())
@@ -81,7 +85,7 @@ class PersonalViewModel(
 
             try {
                 val profRes = withContext(Dispatchers.IO) {
-                    RepositoryProvider.userRepository.getProfile(userId)
+                    getProfileUseCase(userId)
                 }
                 val fetchedProfile = profRes.getOrNull()
 
@@ -145,7 +149,7 @@ class PersonalViewModel(
         viewModelScope.launch {
             try {
                 val res = withContext(Dispatchers.IO) {
-                    RepositoryProvider.userRepository.uploadAvatar(userId, imageBytes)
+                    uploadAvatarUseCase(userId, imageBytes)
                 }
                 res.getOrNull()?.let { newAvatarUrl ->
                     _state.update {
@@ -163,7 +167,7 @@ class PersonalViewModel(
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    RepositoryProvider.userRepository.deleteAvatar(userId)
+                    deleteAvatarUseCase(userId)
                 }
                 _state.update {
                     it.copy(profile = it.profile?.copy(avatar_url = null))

@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.eous.mentor.di.UseCaseProvider
+import com.eous.mentor.domain.usecase.friend.*
 
 data class SuggestedUser(
     val id: String,
@@ -39,7 +41,12 @@ data class FriendsState(
 )
 
 class FriendsViewModel(
-    private val userId: String
+    private val userId: String,
+    private val getFriendsOverviewUseCase: GetFriendsOverviewUseCase = UseCaseProvider.getFriendsOverview,
+    private val searchUsersUseCase: SearchUsersUseCase = UseCaseProvider.searchUsers,
+    private val sendFriendRequestUseCase: SendFriendRequestUseCase = UseCaseProvider.sendFriendRequest,
+    private val acceptFriendRequestUseCase: AcceptFriendRequestUseCase = UseCaseProvider.acceptFriendRequest,
+    private val removeFriendshipUseCase: RemoveFriendshipUseCase = UseCaseProvider.removeFriendship
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(FriendsState())
@@ -55,11 +62,8 @@ class FriendsViewModel(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             try {
-                val friendsRes = withContext(Dispatchers.IO) {
-                    RepositoryProvider.userRepository.getFriendsList(userId)
-                }
-                val requestsRes = withContext(Dispatchers.IO) {
-                    RepositoryProvider.userRepository.getPendingRequests(userId)
+                val overview = withContext(Dispatchers.IO) {
+                    getFriendsOverviewUseCase(userId).getOrThrow()
                 }
 
                 // Tải thêm toàn bộ các dòng friendships liên quan để phân loại trạng thái tìm kiếm
@@ -75,14 +79,9 @@ class FriendsViewModel(
                 }
                 val allFriendships = (sentFriendships + receivedFriendships).distinctBy { it.id }
 
-                val friendsList = friendsRes.getOrDefault(emptyList())
-                val pendingRequests = requestsRes.getOrDefault(emptyList())
-
-                // Tải danh sách gợi ý thực tế từ DB
-                val suggestedRes = withContext(Dispatchers.IO) {
-                    RepositoryProvider.userRepository.getSuggestedUsers(userId, 15)
-                }
-                val rawSuggested = suggestedRes.getOrDefault(emptyList())
+                val friendsList = overview.friends
+                val pendingRequests = overview.pendingRequests
+                val rawSuggested = overview.suggestedUsers
 
                 // Lọc bỏ những user đã có quan hệ bạn bè (đã gửi hoặc nhận request, hoặc đã kết bạn)
                 val filteredSuggested = rawSuggested.filter { u ->
@@ -178,7 +177,7 @@ class FriendsViewModel(
             _state.update { it.copy(isSearching = true) }
             try {
                 val res = withContext(Dispatchers.IO) {
-                    RepositoryProvider.userRepository.searchUsers(query)
+                    searchUsersUseCase(query)
                 }
                 val list = res.getOrDefault(emptyList()).filter { it.id != userId } // Lọc đi chính mình
                 _state.update {
@@ -203,7 +202,7 @@ class FriendsViewModel(
         viewModelScope.launch {
             try {
                 val res = withContext(Dispatchers.IO) {
-                    RepositoryProvider.userRepository.sendFriendRequest(userId, receiverId)
+                    sendFriendRequestUseCase(userId, receiverId)
                 }
                 if (res.isSuccess) {
                     loadData()
@@ -218,7 +217,7 @@ class FriendsViewModel(
         viewModelScope.launch {
             try {
                 val res = withContext(Dispatchers.IO) {
-                    RepositoryProvider.userRepository.acceptFriendRequest(senderId, userId)
+                    acceptFriendRequestUseCase(senderId, userId)
                 }
                 if (res.isSuccess) {
                     loadData()
@@ -233,7 +232,7 @@ class FriendsViewModel(
         viewModelScope.launch {
             try {
                 val res = withContext(Dispatchers.IO) {
-                    RepositoryProvider.userRepository.declineOrRemoveFriendship(userId, friendId)
+                    removeFriendshipUseCase(userId, friendId)
                 }
                 if (res.isSuccess) {
                     loadData()
