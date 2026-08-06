@@ -10,6 +10,7 @@ import com.eous.mentor.domain.usecase.profile.DeleteAvatarUseCase
 import com.eous.mentor.domain.usecase.profile.GetProfileUseCase
 import com.eous.mentor.domain.usecase.profile.UploadAvatarUseCase
 import com.eous.mentor.domain.usecase.progress.GetProgressStatsUseCase
+import com.eous.mentor.domain.usecase.friend.GetFriendsListUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -38,7 +39,8 @@ class PersonalViewModel(
     private val getProgressStatsUseCase: GetProgressStatsUseCase = UseCaseProvider.getProgressStats,
     private val getProfileUseCase: GetProfileUseCase = UseCaseProvider.getProfile,
     private val uploadAvatarUseCase: UploadAvatarUseCase = UseCaseProvider.uploadAvatar,
-    private val deleteAvatarUseCase: DeleteAvatarUseCase = UseCaseProvider.deleteAvatar
+    private val deleteAvatarUseCase: DeleteAvatarUseCase = UseCaseProvider.deleteAvatar,
+    private val getFriendsListUseCase: GetFriendsListUseCase = UseCaseProvider.getFriendsList
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(PersonalState())
@@ -95,7 +97,7 @@ class PersonalViewModel(
                 val fetchedStats = statsRes.getOrNull()
 
                 val friendsRes = withContext(Dispatchers.IO) {
-                    RepositoryProvider.userRepository.getFriendsList(userId)
+                    getFriendsListUseCase(userId)
                 }
                 val fetchedFriends = friendsRes.getOrDefault(emptyList())
 

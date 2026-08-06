@@ -202,13 +202,11 @@ fun LoginFormScreen(
                             )
                             // Fetch avatar and set new session ID asynchronously
                             scope.launch {
-                                val currentUid = com.eous.mentor.di.RepositoryProvider.sessionRepository.getCurrentUserId()
+                                val currentUid = viewModel.currentUserId()
                                 if (!currentUid.isNullOrEmpty()) {
-                                    val newSessionId = java.util.UUID.randomUUID().toString()
-                                    com.eous.mentor.di.RepositoryProvider.sessionRepository.saveLocalSessionId(context, newSessionId)
-                                    com.eous.mentor.di.RepositoryProvider.userRepository.updateSessionId(currentUid, newSessionId)
+                                    viewModel.issueSession(context, currentUid)
 
-                                    val avatarUrl = com.eous.mentor.di.RepositoryProvider.userRepository.getProfile(currentUid).getOrNull()?.avatar_url
+                                    val avatarUrl = viewModel.fetchAvatarUrl(currentUid)
                                     if (!avatarUrl.isNullOrEmpty()) {
                                         SavedAccountsRepository.saveAccount(
                                             context,

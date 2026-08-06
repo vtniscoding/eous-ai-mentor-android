@@ -252,11 +252,9 @@ fun RegisterFormScreen(
                                     )
                                     // Generate and save session ID
                                     scope.launch {
-                                        val currentUid = com.eous.mentor.di.RepositoryProvider.sessionRepository.getCurrentUserId()
+                                        val currentUid = viewModel.currentUserId()
                                         if (!currentUid.isNullOrEmpty()) {
-                                            val newSessionId = java.util.UUID.randomUUID().toString()
-                                            com.eous.mentor.di.RepositoryProvider.sessionRepository.saveLocalSessionId(context, newSessionId)
-                                            com.eous.mentor.di.RepositoryProvider.userRepository.updateSessionId(currentUid, newSessionId)
+                                            viewModel.issueSession(context, currentUid)
                                         }
                                     }
                                     Toast.makeText(context, "Registration successful!", Toast.LENGTH_SHORT).show()

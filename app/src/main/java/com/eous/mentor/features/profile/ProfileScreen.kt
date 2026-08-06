@@ -33,11 +33,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.eous.mentor.R
 import com.eous.mentor.core.ui.theme.Inter
-import com.eous.mentor.di.RepositoryProvider
-import com.eous.mentor.domain.model.Profile
-import kotlinx.coroutines.launch
 
 private val PrimaryPurple = Color(0xFF5B29A2)
 private val DarkPurpleCardBg = Color(0xFF5821A6)
@@ -111,18 +109,11 @@ fun ProfileScreen(
     userId: String,
     isForceOnboarding: Boolean = false,
     onBack: () -> Unit,
+    viewModel: ProfileViewModel = viewModel(),
     onComplete: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-    val userRepository = RepositoryProvider.userRepository
-
-    var userProfile by remember { mutableStateOf<Profile?>(null) }
-    var selectedLevel by remember { mutableStateOf("high_school") }
-    var selectedStyle by remember { mutableStateOf("detailed") }
-    var selectedSubjects by remember { mutableStateOf<List<String>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var isSaving by remember { mutableStateOf(false) }
+    val state by viewModel.state.collectAsState()
 
     // Intercept back press during forced onboarding
     if (isForceOnboarding) {
@@ -132,23 +123,14 @@ fun ProfileScreen(
     }
 
     LaunchedEffect(userId) {
-        if (userId.isNotEmpty()) {
-            isLoading = true
-            userRepository.getProfile(userId).onSuccess { profile ->
-                userProfile = profile
-                profile?.education_level?.let { selectedLevel = it }
-                profile?.explanation_style?.let { selectedStyle = it }
-                profile?.subjects?.let { selectedSubjects = it }
-            }
-            isLoading = false
-        }
+        viewModel.loadProfile(userId)
     }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = Color.White
     ) {
-        if (isLoading) {
+        if (state.isLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -251,7 +233,7 @@ fun ProfileScreen(
                             )
 
                             educationOptions.forEachIndexed { index, option ->
-                                val isSelected = selectedLevel == option.id
+                                val isSelected = state.selectedLevel == option.id
                                 val optionInteractionSource = remember { MutableInteractionSource() }
                                 val isOptionPressed by optionInteractionSource.collectIsPressedAsState()
                                 val optionScale by animateFloatAsState(
@@ -279,7 +261,7 @@ fun ProfileScreen(
                                             interactionSource = optionInteractionSource,
                                             indication = null
                                         ) {
-                                            selectedLevel = option.id
+                                            viewModel.setSelectedLevel(option.id)
                                         }
                                         .padding(horizontal = 16.dp, vertical = 10.dp)
                                 ) {
@@ -341,7 +323,7 @@ fun ProfileScreen(
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 subjectOptions.forEach { subject ->
-                                    val isSelected = selectedSubjects.contains(subject)
+                                    val isSelected = state.selectedSubjects.contains(subject)
                                     Box(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(20.dp))
@@ -352,11 +334,12 @@ fun ProfileScreen(
                                                 shape = RoundedCornerShape(20.dp)
                                             )
                                             .clickable {
-                                                selectedSubjects = if (isSelected) {
-                                                    selectedSubjects.filter { it != subject }
+                                                val updated = if (isSelected) {
+                                                    state.selectedSubjects.filter { it != subject }
                                                 } else {
-                                                    selectedSubjects + subject
+                                                    state.selectedSubjects + subject
                                                 }
+                                                viewModel.setSelectedSubjects(updated)
                                             }
                                             .padding(horizontal = 16.dp, vertical = 8.dp),
                                         contentAlignment = Alignment.Center
@@ -391,7 +374,7 @@ fun ProfileScreen(
                             )
 
                             explanationOptions.forEachIndexed { index, option ->
-                                val isSelected = selectedStyle == option.id
+                                val isSelected = state.selectedStyle == option.id
                                 val styleInteractionSource = remember { MutableInteractionSource() }
                                 val isStylePressed by styleInteractionSource.collectIsPressedAsState()
                                 val styleScale by animateFloatAsState(
@@ -419,7 +402,7 @@ fun ProfileScreen(
                                             interactionSource = styleInteractionSource,
                                             indication = null
                                         ) {
-                                            selectedStyle = option.id
+                                            viewModel.setSelectedStyle(option.id)
                                         }
                                         .padding(horizontal = 16.dp, vertical = 10.dp)
                                 ) {
@@ -464,9 +447,9 @@ fun ProfileScreen(
                             val isCompleteHovered by completeInteractionSource.collectIsHoveredAsState()
                             val isCompletePressed by completeInteractionSource.collectIsPressedAsState()
                             val completeScale by animateFloatAsState(
-                                targetValue = if (isCompletePressed) 0.95f else if (isCompleteHovered) 1.03f else 1.0f,
-                                animationSpec = spring(stiffness = Spring.StiffnessLow),
-                                label = "complete_scale"
+                                    targetValue = if (isCompletePressed) 0.95f else if (isCompleteHovered) 1.03f else 1.0f,
+                                    animationSpec = spring(stiffness = Spring.StiffnessLow),
+                                    label = "complete_scale"
                             )
 
                             Box(
@@ -480,38 +463,31 @@ fun ProfileScreen(
                             ) {
                                 Button(
                                     onClick = {
-                                        if (!isSaving) {
-                                            isSaving = true
-                                            coroutineScope.launch {
-                                                userRepository.saveOnboardingProfile(
-                                                    userId = userId,
-                                                    educationLevel = selectedLevel,
-                                                    explanationStyle = selectedStyle,
-                                                    subjects = selectedSubjects
-                                                ).onSuccess {
-                                                    Toast.makeText(
-                                                        context,
-                                                        "Profile updated successfully!",
-                                                        Toast.LENGTH_SHORT
-                                                    ).show()
-                                                    onComplete()
-                                                }.onFailure {
-                                                    Toast.makeText(
-                                                        context,
-                                                        "Failed to update profile: ${it.message}",
-                                                        Toast.LENGTH_SHORT
-                                                    ).show()
-                                                }
-                                                isSaving = false
+                                        viewModel.saveProfile(
+                                            userId = userId,
+                                            onSuccess = {
+                                                Toast.makeText(
+                                                    context,
+                                                    "Profile updated successfully!",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                                onComplete()
+                                            },
+                                            onError = {
+                                                Toast.makeText(
+                                                    context,
+                                                    "Failed to update profile",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
                                             }
-                                        }
+                                        )
                                     },
                                     interactionSource = completeInteractionSource,
                                     shape = RoundedCornerShape(20.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = ButtonPurpleBg),
                                     modifier = Modifier.fillMaxSize()
                                 ) {
-                                    if (isSaving) {
+                                    if (state.isSaving) {
                                         CircularProgressIndicator(
                                             color = ButtonPurpleText,
                                             modifier = Modifier.size(20.dp),

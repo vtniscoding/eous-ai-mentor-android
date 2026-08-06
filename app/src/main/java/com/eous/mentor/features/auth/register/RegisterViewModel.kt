@@ -11,9 +11,21 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+import com.eous.mentor.di.RepositoryProvider
+import com.eous.mentor.domain.repository.SessionRepository
+import com.eous.mentor.domain.usecase.session.IssueLocalSessionUseCase
+
 class RegisterViewModel(
-    private val registerUseCase: RegisterUseCase = UseCaseProvider.register
+    private val registerUseCase: RegisterUseCase = UseCaseProvider.register,
+    private val issueLocalSessionUseCase: IssueLocalSessionUseCase = UseCaseProvider.issueLocalSession,
+    private val sessionRepository: SessionRepository = RepositoryProvider.sessionRepository
 ) : ViewModel() {
+
+    fun currentUserId(): String? = sessionRepository.getCurrentUserId()
+
+    suspend fun issueSession(context: android.content.Context, userId: String) {
+        issueLocalSessionUseCase(context, userId)
+    }
     private val _state = MutableStateFlow(RegisterState())
     val state: StateFlow<RegisterState> = _state.asStateFlow()
 

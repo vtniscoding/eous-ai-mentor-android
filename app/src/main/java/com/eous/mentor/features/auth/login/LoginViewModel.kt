@@ -11,9 +11,27 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+import com.eous.mentor.di.RepositoryProvider
+import com.eous.mentor.domain.repository.SessionRepository
+import com.eous.mentor.domain.usecase.profile.GetProfileUseCase
+import com.eous.mentor.domain.usecase.session.IssueLocalSessionUseCase
+
 class LoginViewModel(
-    private val loginUseCase: LoginUseCase = UseCaseProvider.login
+    private val loginUseCase: LoginUseCase = UseCaseProvider.login,
+    private val issueLocalSessionUseCase: IssueLocalSessionUseCase = UseCaseProvider.issueLocalSession,
+    private val getProfileUseCase: GetProfileUseCase = UseCaseProvider.getProfile,
+    private val sessionRepository: SessionRepository = RepositoryProvider.sessionRepository
 ) : ViewModel() {
+
+    fun currentUserId(): String? = sessionRepository.getCurrentUserId()
+
+    suspend fun fetchAvatarUrl(userId: String): String? {
+        return getProfileUseCase(userId).getOrNull()?.avatar_url
+    }
+
+    suspend fun issueSession(context: android.content.Context, userId: String) {
+        issueLocalSessionUseCase(context, userId)
+    }
     private val _state = MutableStateFlow(LoginState())
     val state: StateFlow<LoginState> = _state.asStateFlow()
 

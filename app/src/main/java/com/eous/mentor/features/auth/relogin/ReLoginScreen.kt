@@ -7,9 +7,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -27,24 +27,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.eous.mentor.R
 import com.eous.mentor.core.data.repository.SavedAccountsRepository
 import com.eous.mentor.core.navigation.navigateSafe
 import com.eous.mentor.core.ui.theme.Inter
-import com.eous.mentor.di.RepositoryProvider
 import com.eous.mentor.domain.model.SavedAccount
-import com.eous.mentor.domain.usecase.auth.LoginUseCase
 import com.eous.mentor.features.auth.friendlyAuthError
 import kotlinx.coroutines.launch
 import io.github.jan.supabase.auth.auth
+import com.eous.mentor.di.supabase
 
 private val HeaderPurple = Color(0xFF5B29A2)
 
 @Composable
 fun ReLoginScreen(
         navController: NavController,
+        viewModel: ReLoginViewModel = viewModel(),
         onAddAccount: () -> Unit = { navController.navigateSafe("login") },
         onLoginSuccess: () -> Unit = {
             navController.navigateSafe("dashboard") { popUpTo("relogin") { inclusive = true } }
@@ -52,19 +53,16 @@ fun ReLoginScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var savedAccounts by remember { mutableStateOf<List<SavedAccount>>(emptyList()) }
-    var isManageMode by remember { mutableStateOf(false) }
-    var loggingInEmail by remember { mutableStateOf<String?>(null) }
-    var accountToRemove by remember { mutableStateOf<SavedAccount?>(null) }
-
-    val loginUseCase = remember { LoginUseCase(RepositoryProvider.authRepository) }
+    val state by viewModel.state.collectAsState()
 
     // Load from SharedPreferences off the composition phase to avoid blocking the UI thread
-    LaunchedEffect(Unit) { savedAccounts = SavedAccountsRepository.getSavedAccounts(context) }
+    LaunchedEffect(Unit) {
+        viewModel.updateSavedAccounts(SavedAccountsRepository.getSavedAccounts(context))
+    }
 
-    if (accountToRemove != null) {
+    if (state.accountToRemove != null) {
         AlertDialog(
-                onDismissRequest = { accountToRemove = null },
+                onDismissRequest = { viewModel.setAccountToRemove(null) },
                 title = {
                     Text(
                             text = "Remove account",
@@ -85,19 +83,19 @@ fun ReLoginScreen(
                 confirmButton = {
                     TextButton(
                             onClick = {
-                                val target = accountToRemove
-                                accountToRemove = null
+                                val target = state.accountToRemove
+                                viewModel.setAccountToRemove(null)
                                 if (target != null) {
                                     val updated =
                                             SavedAccountsRepository.removeAccount(
                                                     context,
                                                     target.email
                                             )
-                                    savedAccounts = updated
+                                    viewModel.updateSavedAccounts(updated)
                                     Toast.makeText(context, "Account removed", Toast.LENGTH_SHORT)
                                             .show()
                                     if (updated.isEmpty()) {
-                                        isManageMode = false
+                                        viewModel.setManageMode(false)
                                         onAddAccount()
                                     }
                                 }
@@ -112,7 +110,7 @@ fun ReLoginScreen(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { accountToRemove = null }) {
+                    TextButton(onClick = { viewModel.setAccountToRemove(null) }) {
                         Text("Cancel", color = Color(0xFF64748B), fontFamily = Inter)
                     }
                 },
@@ -181,59 +179,48 @@ fun ReLoginScreen(
                                 .heightIn(max = 220.dp)
                                 .verticalScroll(rememberScrollState())
                         ) {
-                            savedAccounts.forEach { account ->
+                            state.savedAccounts.forEach { account ->
                                 SavedAccountItemRow(
                                     account = account,
-                                    isManageMode = isManageMode,
-                                    isLoggingIn = loggingInEmail == account.email,
+                                    isManageMode = state.isManageMode,
+                                    isLoggingIn = state.loggingInEmail == account.email,
                                     onSelect = {
-                                        if (loggingInEmail == null && !isManageMode) {
-                                            loggingInEmail = account.email
-                                            scope.launch {
-                                                val res = loginUseCase(account.email, account.password)
-                                                loggingInEmail = null
-                                                  if (res.isSuccess) {
-                                                      val currentUid = com.eous.mentor.di.RepositoryProvider.sessionRepository.getCurrentUserId()
-                                                      if (!currentUid.isNullOrEmpty()) {
-                                                          val newSessionId = java.util.UUID.randomUUID().toString()
-                                                          com.eous.mentor.di.RepositoryProvider.sessionRepository.saveLocalSessionId(context, newSessionId)
-                                                          com.eous.mentor.di.RepositoryProvider.userRepository.updateSessionId(currentUid, newSessionId)
-                                                      }
-                                                      try {
-                                                          val (current, next) = com.eous.mentor.di.supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-                                                          if (current == io.github.jan.supabase.auth.mfa.AuthenticatorAssuranceLevel.AAL1 &&
-                                                              next == io.github.jan.supabase.auth.mfa.AuthenticatorAssuranceLevel.AAL2) {
-                                                              Toast.makeText(context, "MFA Verification Required", Toast.LENGTH_SHORT).show()
-                                                              navController.navigateSafe("mfa_verify") {
-                                                                  popUpTo("relogin") { inclusive = true }
-                                                              }
-                                                          } else {
-                                                              Toast.makeText(
-                                                                  context,
-                                                                  "Welcome back, ${account.email}!",
-                                                                  Toast.LENGTH_SHORT
-                                                              ).show()
-                                                              onLoginSuccess()
-                                                          }
-                                                      } catch (e: Throwable) {
-                                                          Toast.makeText(
-                                                              context,
-                                                              "Welcome back, ${account.email}!",
-                                                              Toast.LENGTH_SHORT
-                                                          ).show()
-                                                          onLoginSuccess()
-                                                      }
-                                                } else {
-                                                    val msg = res.exceptionOrNull()
-                                                        ?.let { friendlyAuthError(it) }
-                                                        ?: "Re-login failed. Please enter credentials."
+                                        if (state.loggingInEmail == null && !state.isManageMode) {
+                                            viewModel.loginAccount(context, account) { result ->
+                                                result.onSuccess {
+                                                    try {
+                                                        val (current, next) = com.eous.mentor.di.supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+                                                        if (current == io.github.jan.supabase.auth.mfa.AuthenticatorAssuranceLevel.AAL1 &&
+                                                            next == io.github.jan.supabase.auth.mfa.AuthenticatorAssuranceLevel.AAL2) {
+                                                            Toast.makeText(context, "MFA Verification Required", Toast.LENGTH_SHORT).show()
+                                                            navController.navigateSafe("mfa_verify") {
+                                                                popUpTo("relogin") { inclusive = true }
+                                                            }
+                                                        } else {
+                                                            Toast.makeText(
+                                                                context,
+                                                                "Welcome back, ${account.email}!",
+                                                                Toast.LENGTH_SHORT
+                                                            ).show()
+                                                            onLoginSuccess()
+                                                        }
+                                                    } catch (e: Throwable) {
+                                                        Toast.makeText(
+                                                            context,
+                                                            "Welcome back, ${account.email}!",
+                                                            Toast.LENGTH_SHORT
+                                                        ).show()
+                                                        onLoginSuccess()
+                                                    }
+                                                }.onFailure { e ->
+                                                    val msg = friendlyAuthError(e)
                                                     Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
                                                     onAddAccount()
                                                 }
                                             }
                                         }
                                     },
-                                    onRemove = { accountToRemove = account }
+                                    onRemove = { viewModel.setAccountToRemove(account) }
                                 )
 
                                 HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 1.dp)
@@ -250,13 +237,13 @@ fun ReLoginScreen(
             Box(
                     modifier =
                             Modifier.padding(bottom = 36.dp).clickable {
-                                isManageMode = !isManageMode
+                                viewModel.setManageMode(!state.isManageMode)
                             },
                     contentAlignment = Alignment.Center
             ) {
                 Text(
-                        text = if (isManageMode) "Done" else "Account Manage",
-                        color = if (isManageMode) Color(0xFF5B29A2) else Color(0xFF1E1D22),
+                        text = if (state.isManageMode) "Done" else "Account Manage",
+                        color = if (state.isManageMode) Color(0xFF5B29A2) else Color(0xFF1E1D22),
                         fontSize = 16.sp,
                         fontFamily = Inter,
                         fontWeight = FontWeight.Bold

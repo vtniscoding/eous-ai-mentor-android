@@ -9,6 +9,7 @@ import com.eous.mentor.domain.usecase.progress.GetProgressStatsUseCase
 import com.eous.mentor.domain.usecase.home.GetHomeStatsUseCase
 import com.eous.mentor.domain.usecase.profile.*
 import com.eous.mentor.domain.usecase.quiz.*
+import com.eous.mentor.domain.usecase.session.*
 
 /**
  * Service locator for use cases, mirroring RepositoryProvider.
@@ -49,6 +50,7 @@ object UseCaseProvider {
     val sendFriendRequest by lazy { SendFriendRequestUseCase(RepositoryProvider.userRepository) }
     val acceptFriendRequest by lazy { AcceptFriendRequestUseCase(RepositoryProvider.userRepository) }
     val removeFriendship by lazy { RemoveFriendshipUseCase(RepositoryProvider.userRepository) }
+    val getFriendsList by lazy { GetFriendsListUseCase(RepositoryProvider.userRepository) }
 
     // progress
     val getProgressStats by lazy { GetProgressStatsUseCase(RepositoryProvider.userRepository, RepositoryProvider.chatRepository) }
@@ -72,4 +74,9 @@ object UseCaseProvider {
     val uploadAvatar by lazy { UploadAvatarUseCase(RepositoryProvider.userRepository) }
     val deleteAvatar by lazy { DeleteAvatarUseCase(RepositoryProvider.userRepository) }
     val saveOnboardingProfile by lazy { SaveOnboardingProfileUseCase(RepositoryProvider.userRepository) }
+
+    // session
+    val issueLocalSession by lazy { IssueLocalSessionUseCase(RepositoryProvider.sessionRepository, RepositoryProvider.userRepository) }
+    val isSessionTakenOver by lazy { IsSessionTakenOverUseCase(RepositoryProvider.sessionRepository) }
+    val getRemoteSessionId by lazy { GetRemoteSessionIdUseCase(RepositoryProvider.userRepository) }
 }
