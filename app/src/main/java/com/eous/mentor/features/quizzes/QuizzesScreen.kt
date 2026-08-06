@@ -899,12 +899,13 @@ private fun QuizResultDialog(
 private fun CreateQuizWizardDialog(
         subjects: List<String>,
         isGenerating: Boolean,
+        userEducationLevel: String = "high_school",
         onDismiss: () -> Unit,
         onCreate: (topic: String, prompt: String, totalQuestions: Int, difficulty: String) -> Unit
 ) {
     var currentStep by remember { mutableIntStateOf(1) } // Step 1, 2, 3
     var topicText by remember { mutableStateOf("") }
-    var selectedDifficulty by remember { mutableStateOf("high_school") }
+    var selectedDifficulty by remember { mutableStateOf(userEducationLevel) }
     var selectedQuestionCount by remember { mutableIntStateOf(5) }
 
     val suggestedChips =

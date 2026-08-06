@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.eous.mentor.core.util.QuizParser
 import com.eous.mentor.di.RepositoryProvider
 import com.eous.mentor.domain.model.*
 import com.eous.mentor.domain.repository.ChatRepository
@@ -429,22 +430,37 @@ class ChatViewModel(
 
                                                 // 3. Check if AI generated a Quiz
                                                 var createdQuizId: String? = null
-                                                val q = aiResponse.quiz
-                                                if (q != null && q.questions.isNotEmpty()) {
+                                                var effectiveQuiz = aiResponse.quiz
+                                                var effectiveReply = aiResponse.reply
+
+                                                // Client-side fallback: if Edge Function didn't parse quiz,
+                                                // try to extract it from the reply text
+                                                if (effectiveQuiz == null || effectiveQuiz.questions.isEmpty()) {
+                                                    val fallbackResult = QuizParser.extractFromReply(effectiveReply)
+                                                    if (fallbackResult != null) {
+                                                        effectiveQuiz = fallbackResult.first
+                                                        effectiveReply = fallbackResult.second
+                                                    }
+                                                }
+
+                                                if (effectiveQuiz != null && effectiveQuiz.questions.isNotEmpty()) {
                                                     val topicName =
                                                             aiResponse.subject
-                                                                    ?: q.topic.ifBlank { "General" }
+                                                                    ?: effectiveQuiz.topic.ifBlank { "General" }
                                                     val quizTitle =
-                                                            q.title.ifBlank { "Bài tập $topicName" }
+                                                            effectiveQuiz.title.ifBlank { "Bài tập $topicName" }
+                                                    // Override difficulty with user's actual education level
+                                                    val quizDifficulty = userProfile?.education_level
+                                                            ?: effectiveQuiz.difficulty.ifBlank { "high_school" }
                                                     val createRes =
                                                             userRepository.createQuiz(
                                                                     userId = userId,
                                                                     topic = topicName,
                                                                     title = quizTitle,
                                                                     totalQuestions =
-                                                                            q.questions.size,
-                                                                    questions = q.questions,
-                                                                    difficulty = q.difficulty
+                                                                            effectiveQuiz.questions.size,
+                                                                    questions = effectiveQuiz.questions,
+                                                                    difficulty = quizDifficulty
                                                             )
                                                     if (createRes.isSuccess) {
                                                         createdQuizId = createRes.getOrNull()?.id
@@ -455,7 +471,7 @@ class ChatViewModel(
                                                 val replyContent = if (createdQuizId != null) {
                                                     "I have designed the questions above to help you review your knowledge. Don't hesitate to try your best, as every mistake is an opportunity to learn even more deeply. Happy learning, and keep up your eager spirit!"
                                                 } else {
-                                                    aiResponse.reply
+                                                    effectiveReply
                                                 }
                                                 val aiMsg =
                                                         ChatMessage(
