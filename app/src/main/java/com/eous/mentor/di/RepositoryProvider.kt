@@ -1,9 +1,9 @@
 package com.eous.mentor.di
 
-import com.eous.mentor.data.repository.AuthRepositoryImpl
-import com.eous.mentor.data.repository.ChatRepositoryImpl
-import com.eous.mentor.data.repository.SessionRepositoryImpl
-import com.eous.mentor.data.repository.UserRepositoryImpl
+import com.eous.mentor.core.data.repository.AuthRepositoryImpl
+import com.eous.mentor.core.data.repository.ChatRepositoryImpl
+import com.eous.mentor.core.data.repository.SessionRepositoryImpl
+import com.eous.mentor.core.data.repository.UserRepositoryImpl
 import com.eous.mentor.domain.repository.AuthRepository
 import com.eous.mentor.domain.repository.ChatRepository
 import com.eous.mentor.domain.repository.SessionRepository

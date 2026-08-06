@@ -2,7 +2,6 @@ package com.eous.mentor.features.quizzes
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.eous.mentor.data.repository.UserRepositoryImpl
 import com.eous.mentor.domain.model.Quiz
 import com.eous.mentor.domain.model.QuizQuestion
 import com.eous.mentor.domain.repository.UserRepository
@@ -12,12 +11,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-import com.eous.mentor.data.repository.ChatRepositoryImpl
+import com.eous.mentor.core.util.QuizParser
+import com.eous.mentor.di.RepositoryProvider
+import com.eous.mentor.domain.model.UserContext
 import com.eous.mentor.domain.repository.ChatRepository
 
 class QuizzesViewModel(
-    private val userRepository: UserRepository = UserRepositoryImpl(),
-    private val chatRepository: ChatRepository = ChatRepositoryImpl()
+    private val userRepository: UserRepository = RepositoryProvider.userRepository,
+    private val chatRepository: ChatRepository = RepositoryProvider.chatRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(QuizzesState())
@@ -28,7 +29,9 @@ class QuizzesViewModel(
             _uiState.update { it.copy(isLoading = true) }
             
             val profileRes = userRepository.getProfile(userId)
-            val subjects = profileRes.getOrNull()?.subjects?.filter { it.isNotBlank() } ?: emptyList()
+            val profile = profileRes.getOrNull()
+            val subjects = profile?.subjects?.filter { it.isNotBlank() } ?: emptyList()
+            val educationLevel = profile?.education_level ?: "high_school"
 
             val result = userRepository.getQuizzes(userId)
             val loadedQuizzes = result.getOrDefault(emptyList())
@@ -37,7 +40,8 @@ class QuizzesViewModel(
                 it.copy(
                     isLoading = false,
                     quizzes = loadedQuizzes,
-                    userSubjects = subjects
+                    userSubjects = subjects,
+                    userEducationLevel = educationLevel
                 ) 
             }
         }
@@ -70,11 +74,21 @@ class QuizzesViewModel(
             val userPrompt = prompt.ifBlank { userTopic }
             val aiMessagePrompt = "Tạo bài tập trắc nghiệm $totalQuestions câu hỏi môn $userTopic độ khó $quizDifficulty với chủ đề: $userPrompt"
 
-            val aiResult = chatRepository.getAiResponse(aiMessagePrompt, emptyList(), null)
+            val userContext = UserContext(
+                education_level = userEducationLevel,
+                explanation_style = "detailed",
+                subjects = emptyList()
+            )
+            val aiResult = chatRepository.getAiResponse(aiMessagePrompt, emptyList(), null, userContext)
             aiResult.onFailure {
                 android.util.Log.e("QuizzesViewModel", "Failed to get AI quiz response", it)
             }
-            val aiGeneratedQuiz = aiResult.getOrNull()?.quiz
+            val aiResponse = aiResult.getOrNull()
+            // Prefer the quiz parsed by the Edge Function; otherwise re-parse the reply client-side
+            // before giving up and using the local fallback questions.
+            val aiGeneratedQuiz =
+                aiResponse?.quiz?.takeIf { it.questions.isNotEmpty() }
+                    ?: aiResponse?.reply?.let { QuizParser.extractFromReply(it)?.first }
             val questions = aiGeneratedQuiz?.questions?.ifEmpty { null } ?: createFallbackQuestions(userTopic, userPrompt, totalQuestions)
             val quizTitle = aiGeneratedQuiz?.title?.ifBlank { null } ?: userPrompt
 

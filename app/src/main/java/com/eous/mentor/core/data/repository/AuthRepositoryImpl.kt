@@ -1,4 +1,4 @@
-package com.eous.mentor.data.repository
+package com.eous.mentor.core.data.repository
 
 import com.eous.mentor.di.supabase
 import com.eous.mentor.domain.repository.AuthRepository
