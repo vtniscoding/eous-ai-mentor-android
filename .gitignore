@@ -52,6 +52,7 @@ google-services.json
 
 # Release
 .release/
+release/
 
 # --- SECURITY / SECRETS / API KEYS ---
 
