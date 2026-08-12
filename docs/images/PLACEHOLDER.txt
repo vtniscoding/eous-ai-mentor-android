@@ -7,3 +7,4 @@ Please place your captured screenshots in this folder with the following filenam
 5. quiz_screen.png (Quiz session screen with correct/incorrect visual feedback)
 6. personal_library.png (Saved bookmarks list filtered by subject folder)
 7. friends_leaderboard.png (Friends network and XP leaderboards)
+8. Auth 2FA
