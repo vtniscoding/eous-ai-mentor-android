@@ -1,0 +1,9 @@
+Please place your captured screenshots in this folder with the following filenames as referenced in SUPPORT_DOCUMENTATION.md:
+
+1. login_2fa.png (Account registration, login, and 2-step verification screens)
+2. home_screen.png (Home screen dashboard showing XP, streak, and badges)
+3. academic_chat.png (AI chat interface with categorized subject tags)
+4. image_scanner.png (Camera/gallery scanner capture view)
+5. quiz_screen.png (Quiz session screen with correct/incorrect visual feedback)
+6. personal_library.png (Saved bookmarks list filtered by subject folder)
+7. friends_leaderboard.png (Friends network and XP leaderboards)

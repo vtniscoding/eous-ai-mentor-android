@@ -354,7 +354,6 @@ fun MfaEnrollDialog(
             errorMessage = e.message ?: "MFA enrollment failed to initiate."
         }
     }
-
     val handleCancel = {
         scope.launch {
             val fId = factorId

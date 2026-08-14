@@ -82,3 +82,9 @@ skills-lock.json
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Gemini and Project assignments
+.gemini/
+GEMINI.md
+assignment/
+

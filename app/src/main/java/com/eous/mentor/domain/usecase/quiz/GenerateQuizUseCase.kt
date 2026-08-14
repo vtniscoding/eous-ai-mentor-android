@@ -27,8 +27,8 @@ class GenerateQuizUseCase(
         val userTopic = topic.ifBlank { "General" }
         val userPrompt = prompt.ifBlank { userTopic }
         val aiMessagePrompt =
-            "Tạo bài tập trắc nghiệm $totalQuestions câu hỏi môn $userTopic " +
-                "độ khó $quizDifficulty với chủ đề: $userPrompt"
+            "Generate practice quiz  $totalQuestions questions for $userTopic " +
+                "level $quizDifficulty about: $userPrompt"
 
         val userContext = UserContext(
             education_level = userEducationLevel,

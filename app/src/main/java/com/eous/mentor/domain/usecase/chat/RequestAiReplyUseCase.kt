@@ -59,10 +59,14 @@ class RequestAiReplyUseCase(
         var effectiveReply = aiResponse.reply
 
         if (effectiveQuiz == null || effectiveQuiz.questions.isEmpty()) {
-            val fallbackResult = QuizParser.extractFromReply(effectiveReply)
-            if (fallbackResult != null) {
-                effectiveQuiz = fallbackResult.first
-                effectiveReply = fallbackResult.second
+            try {
+                val fallbackResult = QuizParser.extractFromReply(effectiveReply)
+                if (fallbackResult != null) {
+                    effectiveQuiz = fallbackResult.first
+                    effectiveReply = fallbackResult.second
+                }
+            } catch (t: Throwable) {
+                t.printStackTrace()
             }
         }
 
