@@ -28,6 +28,9 @@ object UseCaseProvider {
     val login by lazy { LoginUseCase(RepositoryProvider.authRepository) }
     val register by lazy { RegisterUseCase(RepositoryProvider.authRepository) }
     val logout by lazy { LogoutUseCase(RepositoryProvider.authRepository) }
+    val resetPassword by lazy { ResetPasswordUseCase(RepositoryProvider.authRepository) }
+    val verifyResetOtp by lazy { VerifyResetOtpUseCase(RepositoryProvider.authRepository) }
+    val updatePassword by lazy { UpdatePasswordUseCase(RepositoryProvider.authRepository) }
 
     // quiz
     val getQuizzes by lazy { GetQuizzesUseCase(RepositoryProvider.userRepository) }

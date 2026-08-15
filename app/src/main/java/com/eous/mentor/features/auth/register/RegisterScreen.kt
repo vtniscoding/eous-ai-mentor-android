@@ -38,6 +38,10 @@ import com.eous.mentor.core.navigation.navigateSafe
 import com.eous.mentor.R
 import com.eous.mentor.core.ui.theme.*
 import kotlinx.coroutines.launch
+import io.github.jan.supabase.compose.auth.composeAuth
+import io.github.jan.supabase.compose.auth.composable.rememberSignInWithGoogle
+import io.github.jan.supabase.compose.auth.composable.NativeSignInResult
+import com.eous.mentor.di.supabase
 
 @Composable
 fun RegisterFormScreen(
@@ -48,6 +52,26 @@ fun RegisterFormScreen(
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    val googleAuthAction = supabase.composeAuth.rememberSignInWithGoogle(
+        onResult = { result ->
+            when (result) {
+                is NativeSignInResult.Success -> {
+                    Toast.makeText(context, "Registered/Logged in with Google successfully!", Toast.LENGTH_SHORT).show()
+                    navController.navigateSafe("dashboard") {
+                        popUpTo("intro") { inclusive = true }
+                    }
+                }
+                is NativeSignInResult.Error -> {
+                    Toast.makeText(context, "Google Sign-In failed: ${result.message}", Toast.LENGTH_SHORT).show()
+                }
+                is NativeSignInResult.ClosedByUser -> {}
+                is NativeSignInResult.NetworkError -> {
+                    Toast.makeText(context, "Network error. Please check your connection.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    )
 
     Box(
         modifier = Modifier
@@ -63,18 +87,18 @@ fun RegisterFormScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 32.dp),
+                .padding(horizontal = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
             if (!isTablet) {
-                Spacer(modifier = Modifier.height(80.dp))
+                Spacer(modifier = Modifier.height(45.dp))
             } else {
-                Spacer(modifier = Modifier.height(40.dp))
+                Spacer(modifier = Modifier.height(20.dp))
             }
 
             Column(
-                modifier = Modifier.fillMaxWidth(0.85f),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.Start
             ) {
                 Text(
@@ -87,81 +111,66 @@ fun RegisterFormScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
-                // Error message banner
-                if (state.error != null) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFFFFD1D1))
-                            .border(1.5.dp, Color(0xFFE53935), RoundedCornerShape(16.dp))
-                            .padding(vertical = 12.dp, horizontal = 16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = state.error!!,
-                            color = Color(0xFF8B0000),
-                            fontSize = 14.sp,
-                            fontFamily = Inter,
-                            fontWeight = FontWeight.Medium,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
+                // Parse error messages for specific fields
+                val emailError = if (state.error != null && state.email.isEmpty()) "Email can't be blank" else if (state.error != null && state.error!!.contains("valid email", ignoreCase = true)) "Please enter a valid email address." else null
+                val confirmPasswordError = if (state.error != null && state.confirmPassword.isEmpty()) "Confirm password can't be blank" else if (state.error != null && state.error!!.contains("match", ignoreCase = true)) "Passwords do not match." else null
+                val passwordError = if (state.error != null && state.password.isEmpty()) "Password can't be blank" else if (state.error != null && state.error!!.contains("password", ignoreCase = true) && confirmPasswordError == null) state.error else null
+                val generalError = if (state.error != null && emailError == null && passwordError == null && confirmPasswordError == null) state.error else null
 
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Email
+                    // Email Input
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = "Email",
-                            color = Color.Black,
-                            fontSize = 15.sp,
-                            fontFamily = Inter,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(start = 12.dp, bottom = 6.dp)
-                        )
+                        val isEmailError = emailError != null || generalError != null
                         OutlinedTextField(
                             value = state.email,
                             onValueChange = { viewModel.onEmailChanged(it) },
-                            placeholder = { Text("you@example.com", color = Color.Gray.copy(alpha = 0.5f)) },
+                            placeholder = { Text("Email address", color = Color.Gray.copy(alpha = 0.5f)) },
                             singleLine = true,
+                            isError = isEmailError,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
-                            modifier = Modifier.fillMaxWidth().height(54.dp),
-                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(54.dp),
+                            shape = RoundedCornerShape(24.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = Color.Black,
                                 unfocusedTextColor = Color.Black,
                                 focusedContainerColor = Color(0xFFF1F1F1),
                                 unfocusedContainerColor = Color(0xFFF1F1F1),
-                                focusedBorderColor = Color.Transparent,
+                                focusedBorderColor = Color(0xFF7F43D4),
                                 unfocusedBorderColor = Color.Transparent,
+                                errorContainerColor = Color(0xFFF1F1F1),
+                                errorBorderColor = Color.Red,
                                 cursorColor = Color.Black
                             )
                         )
+                        if (emailError != null) {
+                            Text(
+                                text = emailError,
+                                color = Color.Red,
+                                fontSize = 12.sp,
+                                fontFamily = Inter,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(start = 12.dp, top = 4.dp)
+                            )
+                        }
                     }
 
-                    // Password
+                    // Password Input
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = "Password",
-                            color = Color.Black,
-                            fontSize = 15.sp,
-                            fontFamily = Inter,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(start = 12.dp, bottom = 6.dp)
-                        )
+                        val isPasswordError = passwordError != null || generalError != null
                         OutlinedTextField(
                             value = state.password,
                             onValueChange = { viewModel.onPasswordChanged(it) },
+                            placeholder = { Text("Password", color = Color.Gray.copy(alpha = 0.5f)) },
                             singleLine = true,
+                            isError = isPasswordError,
                             visualTransformation = if (state.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             trailingIcon = {
                                 IconButton(onClick = { viewModel.onTogglePasswordVisibility() }) {
@@ -173,15 +182,19 @@ fun RegisterFormScreen(
                                 }
                             },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next),
-                            modifier = Modifier.fillMaxWidth().height(54.dp),
-                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(54.dp),
+                            shape = RoundedCornerShape(24.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = Color.Black,
                                 unfocusedTextColor = Color.Black,
                                 focusedContainerColor = Color(0xFFF1F1F1),
                                 unfocusedContainerColor = Color(0xFFF1F1F1),
-                                focusedBorderColor = Color.Transparent,
+                                focusedBorderColor = Color(0xFF7F43D4),
                                 unfocusedBorderColor = Color.Transparent,
+                                errorContainerColor = Color(0xFFF1F1F1),
+                                errorBorderColor = Color.Red,
                                 cursorColor = Color.Black
                             )
                         )
@@ -190,22 +203,28 @@ fun RegisterFormScreen(
                         if (state.password.isNotEmpty()) {
                             PasswordStrengthMeter(password = state.password)
                         }
+                        
+                        if (passwordError != null) {
+                            Text(
+                                text = passwordError,
+                                color = Color.Red,
+                                fontSize = 12.sp,
+                                fontFamily = Inter,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(start = 12.dp, top = 4.dp)
+                            )
+                        }
                     }
 
-                    // Confirm Password
+                    // Confirm Password Input
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = "Confirm Password",
-                            color = Color.Black,
-                            fontSize = 15.sp,
-                            fontFamily = Inter,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(start = 12.dp, bottom = 6.dp)
-                        )
+                        val isConfirmError = confirmPasswordError != null || generalError != null
                         OutlinedTextField(
                             value = state.confirmPassword,
                             onValueChange = { viewModel.onConfirmPasswordChanged(it) },
+                            placeholder = { Text("Confirm password", color = Color.Gray.copy(alpha = 0.5f)) },
                             singleLine = true,
+                            isError = isConfirmError,
                             visualTransformation = if (state.isConfirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             trailingIcon = {
                                 IconButton(onClick = { viewModel.onToggleConfirmPasswordVisibility() }) {
@@ -217,21 +236,35 @@ fun RegisterFormScreen(
                                 }
                             },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                            modifier = Modifier.fillMaxWidth().height(54.dp),
-                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(54.dp),
+                            shape = RoundedCornerShape(24.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = Color.Black,
                                 unfocusedTextColor = Color.Black,
                                 focusedContainerColor = Color(0xFFF1F1F1),
                                 unfocusedContainerColor = Color(0xFFF1F1F1),
-                                focusedBorderColor = Color.Transparent,
+                                focusedBorderColor = Color(0xFF7F43D4),
                                 unfocusedBorderColor = Color.Transparent,
+                                errorContainerColor = Color(0xFFF1F1F1),
+                                errorBorderColor = Color.Red,
                                 cursorColor = Color.Black
                             )
                         )
+                        if (confirmPasswordError != null) {
+                            Text(
+                                text = confirmPasswordError,
+                                color = Color.Red,
+                                fontSize = 12.sp,
+                                fontFamily = Inter,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(start = 12.dp, top = 4.dp)
+                            )
+                        }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     // Group button and switch link closer together
                     Column(
@@ -239,6 +272,19 @@ fun RegisterFormScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
+                        // General signup error displayed in the whitespace above Sign Up button
+                        if (generalError != null) {
+                            Text(
+                                text = generalError,
+                                color = Color.Red,
+                                fontSize = 13.sp,
+                                fontFamily = Inter,
+                                fontWeight = FontWeight.Medium,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+                            )
+                        }
+
                         // Sign Up Button
                         Button(
                             onClick = {
@@ -250,7 +296,6 @@ fun RegisterFormScreen(
                                             password = state.password
                                         )
                                     )
-                                    // Generate and save session ID
                                     scope.launch {
                                         val currentUid = viewModel.currentUserId()
                                         if (!currentUid.isNullOrEmpty()) {
@@ -263,7 +308,7 @@ fun RegisterFormScreen(
                                     }
                                 }
                             },
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(24.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF252425)),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -286,6 +331,58 @@ fun RegisterFormScreen(
                             }
                         }
 
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Or separator
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                        ) {
+                            HorizontalDivider(modifier = Modifier.weight(1f), color = Color.LightGray.copy(alpha = 0.5f))
+                            Text(
+                                text = "or",
+                                color = Color.Gray,
+                                fontSize = 14.sp,
+                                fontFamily = Inter,
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            )
+                            HorizontalDivider(modifier = Modifier.weight(1f), color = Color.LightGray.copy(alpha = 0.5f))
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Sign In with Google Button
+                        Button(
+                            onClick = { googleAuthAction.startFlow() },
+                            shape = RoundedCornerShape(24.dp), // Match the Sign Up button shape
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                            border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.6f)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(54.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.ic_google_logo),
+                                    contentDescription = "Google Logo",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "Continue with Google",
+                                    color = Color.Black,
+                                    fontSize = 17.sp,
+                                    fontFamily = Inter,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
                         // Switch to Log In
                         Row(
                             horizontalArrangement = Arrangement.Center,
@@ -300,7 +397,7 @@ fun RegisterFormScreen(
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.clickable {
                                     navController.navigateSafe("login") {
-                                        popUpTo("intro")
+                                        popUpTo("register") { inclusive = true }
                                     }
                                 }
                             )

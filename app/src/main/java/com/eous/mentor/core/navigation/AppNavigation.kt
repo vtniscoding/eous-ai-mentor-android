@@ -27,6 +27,7 @@ import com.eous.mentor.features.auth.login.LoginFormScreen
 import com.eous.mentor.features.auth.register.RegisterFormScreen
 import com.eous.mentor.features.auth.relogin.ReLoginScreen
 import com.eous.mentor.features.auth.splash.SplashScreen
+import com.eous.mentor.features.auth.forgot.ForgotPasswordScreen
 import com.eous.mentor.features.home.HomeViewModel
 import com.eous.mentor.features.chat.ChatViewModel
 import com.eous.mentor.features.main.MainScreen
@@ -168,6 +169,29 @@ fun AuthRouter() {
                     }
                 ) {
                     LoginFormScreen(navController = navController, isTablet = isTablet)
+                }
+                composable(
+                    route = "forgot_password",
+                    enterTransition = {
+                        slideInVertically(
+                            initialOffsetY = { it },
+                            animationSpec = tween(450, easing = FastOutSlowInEasing)
+                        ) + fadeIn(animationSpec = tween(450))
+                    },
+                    exitTransition = {
+                        fadeOut(animationSpec = tween(450))
+                    },
+                    popEnterTransition = {
+                        fadeIn(animationSpec = tween(450))
+                    },
+                    popExitTransition = {
+                        slideOutVertically(
+                            targetOffsetY = { it },
+                            animationSpec = tween(450, easing = FastOutSlowInEasing)
+                        ) + fadeOut(animationSpec = tween(450))
+                    }
+                ) {
+                    ForgotPasswordScreen(navController = navController)
                 }
                 composable(
                     route = "register",

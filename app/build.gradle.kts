@@ -14,6 +14,7 @@ if (localPropertiesFile.exists()) {
 }
 val supabaseUrl = properties.getProperty("SUPABASE_URL") ?: ""
 val supabaseKey = properties.getProperty("SUPABASE_KEY") ?: ""
+val googleWebClientId = properties.getProperty("GOOGLE_WEB_CLIENT_ID") ?: ""
 
 android {
     namespace = "com.eous.mentor"
@@ -33,6 +34,7 @@ android {
         
         buildConfigField("String", "SUPABASE_URL", "\"${supabaseUrl}\"")
         buildConfigField("String", "SUPABASE_KEY", "\"${supabaseKey}\"")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${googleWebClientId}\"")
     }
 
     buildTypes {
@@ -94,12 +96,13 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.5")
 
     // Supabase & Ktor
-    implementation(platform("io.github.jan-tennert.supabase:bom:3.7.0"))
+    implementation(platform("io.github.jan-tennert.supabase:bom:3.6.0"))
     implementation("io.github.jan-tennert.supabase:supabase-kt")
     implementation("io.github.jan-tennert.supabase:postgrest-kt")
     implementation("io.github.jan-tennert.supabase:auth-kt")
     implementation("io.github.jan-tennert.supabase:storage-kt")
     implementation("io.github.jan-tennert.supabase:functions-kt")
+    implementation("io.github.jan-tennert.supabase:compose-auth")
     implementation("io.ktor:ktor-client-android:3.0.3")
     implementation("io.ktor:ktor-client-content-negotiation:3.0.3")
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.3")
@@ -126,6 +129,14 @@ dependencies {
 configurations.all {
     resolutionStrategy {
         force("androidx.browser:browser:1.8.0")
+        force("androidx.activity:activity:1.9.3")
+        force("androidx.activity:activity-ktx:1.9.3")
+        force("androidx.activity:activity-compose:1.9.3")
+        force("androidx.core:core:1.15.0")
+        force("androidx.core:core-ktx:1.15.0")
+        force("androidx.navigation:navigation-compose:2.8.5")
+        force("androidx.navigation:navigation-runtime:2.8.5")
+        force("androidx.navigation:navigation-common:2.8.5")
     }
 }
 

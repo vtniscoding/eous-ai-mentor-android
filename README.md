@@ -32,8 +32,8 @@ Eous AI Mentor is built using modern, production-grade technologies ensuring hig
 Follow these instructions to install Eous AI Mentor on your Android device:
 
 1. **Get the APK File**:
-   * Navigate to the project’s `release/` or https://github.com/vtniscoding/eous-android/releases/tag/v1.0.0
-   * Locate the [eous-ai-mentor-1.0.0.apk](file:///d:/eous-android/release/eous-ai-mentor-1.0.0.apk) file.
+   * Navigate to the project’s `release/` or https://github.com/vtniscoding/eous-ai-mentor-android/releases/tag/v1.0.0
+   * Locate the [eous-ai-mentor-1.0.0.apk](file:///d:/eous-ai-mentor-android/release/eous-ai-mentor-1.0.0.apk) file.
    * Transfer this APK file to your Android device (using USB cable, cloud drive, or local sharing).
 2. **Allow Installation from Unknown Sources**:
    * On your Android device, go to **Settings > Apps > Special app access > Install unknown apps** (or **Settings > Security** on older Android versions).

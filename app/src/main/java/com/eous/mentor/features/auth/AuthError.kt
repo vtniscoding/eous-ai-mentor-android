@@ -21,6 +21,8 @@ fun friendlyAuthError(e: Throwable): String {
             "Password is too weak. Use at least 8 characters with mixed case and digits."
         "invalid email" in msg ->
             "Please enter a valid email address."
+        "invalid_grant" in msg || "otp" in msg || "invalid token" in msg || "invalid code" in msg || "invalid grant" in msg || "recovery" in msg || "token is invalid" in msg || "token is expired" in msg ->
+            "Invalid or expired recovery code. Please check and try again."
         else ->
             "Something went wrong. Please try again later."
     }
