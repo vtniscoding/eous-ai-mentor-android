@@ -5,5 +5,6 @@ import com.eous.mentor.domain.model.HomeData
 data class HomeState(
     val stats: HomeData = HomeData(),
     val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
     val isLoggedOut: Boolean = false
 )

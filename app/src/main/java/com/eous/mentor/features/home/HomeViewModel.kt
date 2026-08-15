@@ -34,29 +34,23 @@ class HomeViewModel(
         loadDashboardStats(null)
     }
 
-    fun loadDashboardStats(context: android.content.Context? = null) {
+    fun loadDashboardStats(context: android.content.Context? = null, isPullToRefresh: Boolean = false) {
         if (userId.isEmpty()) {
-            _state.update { it.copy(isLoading = false) }
+            _state.update { it.copy(isLoading = false, isRefreshing = false) }
             return
         }
 
         viewModelScope.launch {
-            val startTime = System.currentTimeMillis()
-            if (!isInitialLoadDone) {
+            if (isPullToRefresh) {
+                _state.update { it.copy(isRefreshing = true) }
+            } else if (!isInitialLoadDone) {
                 _state.update { it.copy(isLoading = true) }
             }
 
             getHomeStatsUseCase(userId)
                 .onSuccess { fetchedStats ->
-                    if (!isInitialLoadDone) {
-                        val elapsedTime = System.currentTimeMillis() - startTime
-                        val minDurationMs = 2600L
-                        if (elapsedTime < minDurationMs) {
-                            kotlinx.coroutines.delay(minDurationMs - elapsedTime)
-                        }
-                    }
                     isInitialLoadDone = true
-                    _state.update { it.copy(stats = fetchedStats, isLoading = false) }
+                    _state.update { it.copy(stats = fetchedStats, isLoading = false, isRefreshing = false) }
 
                     // Check for notifications if context is provided
                     if (context != null) {
@@ -126,7 +120,7 @@ class HomeViewModel(
                 }
                 .onFailure { e ->
                     e.printStackTrace()
-                    _state.update { it.copy(isLoading = false) }
+                    _state.update { it.copy(isLoading = false, isRefreshing = false) }
                 }
         }
     }

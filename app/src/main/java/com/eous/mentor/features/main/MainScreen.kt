@@ -96,6 +96,9 @@ fun MainScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    val networkObserver = remember(context) { com.eous.mentor.core.util.NetworkObserver(context) }
+    val isConnected by networkObserver.isConnected.collectAsState(initial = true)
+
     LaunchedEffect(userId) {
         if (userId.isNotEmpty()) {
             com.eous.mentor.core.data.repository.NotificationRepository.checkAndSendWelcomeNotification(context, userId)
@@ -440,6 +443,12 @@ fun MainScreen(
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
+
+        // --- TOP NETWORK BANNER OVERLAY ---
+        com.eous.mentor.core.ui.components.NetworkBanner(
+            isConnected = isConnected,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
     }
 }
 

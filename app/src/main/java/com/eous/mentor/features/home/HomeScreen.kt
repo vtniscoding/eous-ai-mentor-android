@@ -53,7 +53,11 @@ fun HomeScreen(
                 if (state.isLoading) {
                         com.eous.mentor.core.ui.components.PreparingLoadingScreen()
                 } else {
-                        Box(modifier = Modifier.fillMaxSize()) {
+                        com.eous.mentor.core.ui.components.PullToRefreshLayout(
+                                isRefreshing = state.isRefreshing,
+                                onRefresh = { viewModel.loadDashboardStats(context, isPullToRefresh = true) }
+                        ) {
+                                Box(modifier = Modifier.fillMaxSize()) {
                                 Column(
                                         modifier =
                                                 Modifier.fillMaxSize()
@@ -868,6 +872,7 @@ fun HomeScreen(
                         }
                 }
         }
+}
 }
 
 @Composable

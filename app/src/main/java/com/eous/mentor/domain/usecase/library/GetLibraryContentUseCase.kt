@@ -18,7 +18,7 @@ class GetLibraryContentUseCase(
         runCatching {
             val bookmarksDeferred = async { chatRepository.getBookmarkedMessages(userId).getOrDefault(emptyList()) }
             val quizzesDeferred = async { userRepository.getQuizzes(userId).getOrDefault(emptyList()) }
-            val sessionsDeferred = async { chatRepository.getSessions(userId).getOrThrow() }
+            val sessionsDeferred = async { chatRepository.getSessions(userId).getOrDefault(emptyList()) }
 
             val bookmarks = bookmarksDeferred.await()
             val quizzes = quizzesDeferred.await()

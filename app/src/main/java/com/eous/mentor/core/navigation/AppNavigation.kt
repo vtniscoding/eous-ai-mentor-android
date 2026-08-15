@@ -227,12 +227,22 @@ fun AuthRouter() {
                     MfaVerifyScreen(navController = navController)
                 }
                 composable("dashboard") {
-                    MainScreen(
+                    val currentUid = sessionRepository.getCurrentUserId() ?: ""
+                    if (currentUid.isNotEmpty() && activeUserId != currentUid) {
+                        activeUserId = currentUid
+                    }
+                    if (homeViewModel != null && chatViewModel != null && activeUserId.isNotEmpty()) {
+                        MainScreen(
                             navController = navController,
                             userId = activeUserId,
-                            homeViewModel = homeViewModel!!,
-                            chatViewModel = chatViewModel!!
-                    )
+                            homeViewModel = homeViewModel,
+                            chatViewModel = chatViewModel
+                        )
+                    } else {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = EousPurple)
+                        }
+                    }
                 }
                 composable("leaderboards") {
                     com.eous.mentor.features.leaderboard.LeaderboardsScreen(

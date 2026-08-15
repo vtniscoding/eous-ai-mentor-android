@@ -39,6 +39,10 @@ import com.eous.mentor.features.auth.friendlyAuthError
 import kotlinx.coroutines.launch
 import io.github.jan.supabase.auth.auth
 import com.eous.mentor.di.supabase
+import io.github.jan.supabase.compose.auth.composeAuth
+import io.github.jan.supabase.compose.auth.composable.rememberSignInWithGoogle
+import io.github.jan.supabase.compose.auth.composable.NativeSignInResult
+import com.eous.mentor.di.UseCaseProvider
 
 private val HeaderPurple = Color(0xFF5B29A2)
 
@@ -54,6 +58,55 @@ fun ReLoginScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val state by viewModel.state.collectAsState()
+
+    val googleAuthAction = supabase.composeAuth.rememberSignInWithGoogle(
+        onResult = { result ->
+            when (result) {
+                is NativeSignInResult.Success -> {
+                    scope.launch {
+                        val sessionRepository = com.eous.mentor.di.RepositoryProvider.sessionRepository
+                        val currentUid = sessionRepository.getCurrentUserId()
+                        val currentEmail = sessionRepository.getCurrentUserEmail() ?: ""
+                        if (!currentUid.isNullOrEmpty()) {
+                            UseCaseProvider.issueLocalSession(context, currentUid)
+                            val avatarUrl = UseCaseProvider.getProfile(currentUid).getOrNull()?.avatar_url
+                            SavedAccountsRepository.saveAccount(
+                                context,
+                                SavedAccount(
+                                    email = currentEmail,
+                                    password = "", // Google sign-in has no password
+                                    avatarUrl = avatarUrl
+                                )
+                            )
+                        }
+                        try {
+                            val (current, next) = com.eous.mentor.di.supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+                            if (current == io.github.jan.supabase.auth.mfa.AuthenticatorAssuranceLevel.AAL1 &&
+                                next == io.github.jan.supabase.auth.mfa.AuthenticatorAssuranceLevel.AAL2) {
+                                Toast.makeText(context, "MFA Verification Required", Toast.LENGTH_SHORT).show()
+                                navController.navigateSafe("mfa_verify") {
+                                    popUpTo("relogin") { inclusive = true }
+                                }
+                            } else {
+                                Toast.makeText(context, "Welcome back!", Toast.LENGTH_SHORT).show()
+                                onLoginSuccess()
+                            }
+                        } catch (e: Throwable) {
+                            Toast.makeText(context, "Welcome back!", Toast.LENGTH_SHORT).show()
+                            onLoginSuccess()
+                        }
+                    }
+                }
+                is NativeSignInResult.Error -> {
+                    Toast.makeText(context, "Google Sign-In failed: ${result.message}", Toast.LENGTH_SHORT).show()
+                }
+                is NativeSignInResult.ClosedByUser -> {}
+                is NativeSignInResult.NetworkError -> {
+                    Toast.makeText(context, "Network error. Please check your connection.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    )
 
     // Load from SharedPreferences off the composition phase to avoid blocking the UI thread
     LaunchedEffect(Unit) {
@@ -229,6 +282,38 @@ fun ReLoginScreen(
 
                         // "+ Add an account" Row
                         AddAccountRow(onClick = { onAddAccount() })
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Sign In with Google Button
+                Button(
+                    onClick = { googleAuthAction.startFlow() },
+                    shape = RoundedCornerShape(28.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                    border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.6f)),
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .height(52.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_google_logo),
+                            contentDescription = "Google Logo",
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Continue with Google",
+                            color = Color.Black,
+                            fontSize = 16.sp,
+                            fontFamily = Inter,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }

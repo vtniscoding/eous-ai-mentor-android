@@ -19,7 +19,7 @@ object SavedAccountsRepository {
     fun getSavedAccounts(context: Context): List<SavedAccount> {
         val jsonStr = getPrefs(context).getString(KEY_SAVED_ACCOUNTS, null) ?: return emptyList()
         return try {
-            json.decodeFromString<List<SavedAccount>>(jsonStr)
+            json.decodeFromString<List<SavedAccount>>(jsonStr).filter { it.password.isNotBlank() }
         } catch (e: Throwable) {
             emptyList()
         }
@@ -36,7 +36,7 @@ object SavedAccountsRepository {
     }
 
     fun saveAccount(context: Context, account: SavedAccount) {
-        if (account.email.isBlank()) return
+        if (account.email.isBlank() || account.password.isBlank()) return
         updateAccounts(context) {
             val existing = find { it.email.equals(account.email, ignoreCase = true) }
             val finalPassword = if (account.password.isNotEmpty()) account.password else (existing?.password ?: "")

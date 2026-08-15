@@ -2,6 +2,7 @@ package com.eous.mentor.features.chat
 
 import android.content.Context
 import android.net.Uri
+import com.eous.mentor.core.data.repository.LocalChatCache
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eous.mentor.di.UseCaseProvider
@@ -43,7 +44,7 @@ class ChatViewModel(
     private var userProfile: Profile? = null
 
     init {
-        loadSessions(initialQuestion)
+        loadSessions(initialQuestion = initialQuestion)
         loadUserProfile()
     }
 
@@ -60,28 +61,38 @@ class ChatViewModel(
 
     // ---- Session Management ----
 
-    fun loadSessions(initialQuestion: String = "") {
+    fun loadSessions(context: android.content.Context? = null, initialQuestion: String = "") {
         viewModelScope.launch {
-            val startTime = System.currentTimeMillis()
-            _state.update { it.copy(isLoadingSessions = true) }
+            if (context != null) {
+                val cachedDiskSessions = LocalChatCache.getSessions(context, userId)
+                if (cachedDiskSessions.isNotEmpty()) {
+                    _state.update {
+                        it.copy(
+                            sessions = cachedDiskSessions,
+                            isLoadingSessions = false
+                        )
+                    }
+                } else {
+                    _state.update { it.copy(isLoadingSessions = true) }
+                }
+            } else if (_state.value.sessions.isEmpty()) {
+                _state.update { it.copy(isLoadingSessions = true) }
+            }
+
             getSessionsUseCase(userId)
                     .onSuccess { sessions ->
-                        val elapsedTime = System.currentTimeMillis() - startTime
-                        val minDurationMs = 2600L
-                        if (elapsedTime < minDurationMs) {
-                            kotlinx.coroutines.delay(minDurationMs - elapsedTime)
+                        if (context != null) {
+                            LocalChatCache.saveSessions(context, userId, sessions)
                         }
                         _state.update {
                             it.copy(
                                     sessions = sessions,
-                                    activeSession = null,
-                                    messages = emptyList(),
                                     isLoadingSessions = false
                             )
                         }
 
                         if (sessions.isNotEmpty()) {
-                            preloadAllSessionsMessages(sessions)
+                            preloadAllSessionsMessages(context, sessions)
                         }
 
                         if (initialQuestion.isNotEmpty()) {
@@ -89,8 +100,12 @@ class ChatViewModel(
                         }
                     }
                     .onFailure { e ->
+                        val fallback = if (context != null) LocalChatCache.getSessions(context, userId) else _state.value.sessions
                         _state.update {
-                            it.copy(isLoadingSessions = false, errorMessage = e.message)
+                            it.copy(
+                                sessions = fallback,
+                                isLoadingSessions = false
+                            )
                         }
                     }
         }
@@ -130,13 +145,14 @@ class ChatViewModel(
         }
     }
 
-    fun selectSession(session: ChatSession) {
+    fun selectSession(session: ChatSession, context: android.content.Context? = null) {
         if (session.id == _state.value.activeSession?.id) {
             _state.update { it.copy(isSessionDrawerOpen = false) }
             return
         }
-        val cachedMessages = sessionMessagesCache[session.id]
-        if (cachedMessages != null) {
+        val cachedMessages = sessionMessagesCache[session.id] ?: (if (context != null) LocalChatCache.getMessages(context, session.id!!) else null)
+        if (cachedMessages != null && cachedMessages.isNotEmpty()) {
+            sessionMessagesCache[session.id!!] = cachedMessages
             _state.update {
                 it.copy(
                         activeSession = session,
@@ -155,7 +171,15 @@ class ChatViewModel(
                 )
             }
         }
-        loadMessages(session.id!!)
+        loadMessages(context, session.id!!)
+    }
+
+    fun refresh(context: android.content.Context) {
+        val currentSession = _state.value.activeSession
+        loadSessions(context)
+        if (currentSession?.id != null) {
+            loadMessages(context, currentSession.id)
+        }
     }
 
     fun deleteSession(sessionId: String) {
@@ -230,11 +254,24 @@ class ChatViewModel(
 
     // ---- Messages ----
 
-    private fun loadMessages(sessionId: String) {
+    fun loadMessages(context: android.content.Context? = null, sessionId: String) {
         viewModelScope.launch {
+            if (context != null) {
+                val cachedDisk = LocalChatCache.getMessages(context, sessionId)
+                if (cachedDisk.isNotEmpty()) {
+                    sessionMessagesCache[sessionId] = cachedDisk
+                    if (_state.value.activeSession?.id == sessionId) {
+                        _state.update { it.copy(messages = cachedDisk, isLoadingMessages = false) }
+                    }
+                }
+            }
+
             getSessionMessagesUseCase(sessionId)
                     .onSuccess { messages ->
                         sessionMessagesCache[sessionId] = messages
+                        if (context != null) {
+                            LocalChatCache.saveMessages(context, sessionId, messages)
+                        }
                         if (_state.value.activeSession?.id == sessionId) {
                             _state.update {
                                 it.copy(messages = messages, isLoadingMessages = false)
@@ -243,21 +280,34 @@ class ChatViewModel(
                     }
                     .onFailure { e ->
                         if (_state.value.activeSession?.id == sessionId) {
+                            val fallback = if (context != null) LocalChatCache.getMessages(context, sessionId) else (_state.value.messages)
                             _state.update {
-                                it.copy(isLoadingMessages = false, errorMessage = e.message)
+                                it.copy(messages = fallback, isLoadingMessages = false)
                             }
                         }
                     }
         }
     }
 
-    private fun preloadAllSessionsMessages(sessions: List<ChatSession>) {
+    private fun preloadAllSessionsMessages(context: android.content.Context? = null, sessions: List<ChatSession>) {
         viewModelScope.launch {
             sessions.forEach { session ->
                 val id = session.id ?: return@forEach
+                if (context != null) {
+                    val cachedDisk = LocalChatCache.getMessages(context, id)
+                    if (cachedDisk.isNotEmpty()) {
+                        sessionMessagesCache[id] = cachedDisk
+                        if (_state.value.activeSession?.id == id) {
+                            _state.update { it.copy(messages = cachedDisk, isLoadingMessages = false) }
+                        }
+                    }
+                }
                 if (!sessionMessagesCache.containsKey(id)) {
                     getSessionMessagesUseCase(id).onSuccess { messages ->
                         sessionMessagesCache[id] = messages
+                        if (context != null) {
+                            LocalChatCache.saveMessages(context, id, messages)
+                        }
                         if (_state.value.activeSession?.id == id) {
                             _state.update {
                                 it.copy(messages = messages, isLoadingMessages = false)
@@ -428,7 +478,7 @@ class ChatViewModel(
                                         it.copy(
                                             isSending = false,
                                             isAiResponding = false,
-                                            errorMessage = e.message
+                                            errorMessage = com.eous.mentor.features.auth.friendlyAuthError(e)
                                         )
                                     }
                                 }

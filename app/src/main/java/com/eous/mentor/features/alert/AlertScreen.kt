@@ -73,7 +73,6 @@ fun AlertScreen(
         }
     }
 
-    // Load notifications from local repository using userId
     var notifications by remember(userId) {
         mutableStateOf(NotificationRepository.getNotifications(context, userId))
     }
@@ -147,6 +146,7 @@ private fun NotificationCard(
     item: NotificationItem,
     onClick: () -> Unit
 ) {
+    val localContext = LocalContext.current
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -165,7 +165,7 @@ private fun NotificationCard(
                 Box(
                     modifier = Modifier
                         .size(46.dp)
-                        .background(Color(0xFFCFD1FF), CircleShape)
+                        .background(PrimaryPurple.copy(alpha = 0.1f), CircleShape)
                         .border(1.5.dp, PrimaryPurple, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
@@ -177,24 +177,19 @@ private fun NotificationCard(
                         fontFamily = Inter
                     )
                 }
-            } else if (item.iconRes != null) {
+            } else if (item.iconRes != null && isResourceValid(localContext, item.iconRes)) {
                 Image(
                     painter = painterResource(id = item.iconRes),
                     contentDescription = null,
                     modifier = Modifier.size(46.dp)
                 )
             } else {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .background(Color(0xFFE2E8F0), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_welcome),
+                val fallbackId = R.drawable.ic_welcome
+                if (isResourceValid(localContext, fallbackId)) {
+                    Image(
+                        painter = painterResource(id = fallbackId),
                         contentDescription = null,
-                        tint = PrimaryPurple,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(46.dp)
                     )
                 }
             }
@@ -233,5 +228,15 @@ private fun NotificationCard(
                 )
             }
         }
+    }
+}
+
+private fun isResourceValid(context: android.content.Context, resId: Int): Boolean {
+    return try {
+        val drawable = androidx.core.content.ContextCompat.getDrawable(context, resId) ?: return false
+        val className = drawable.javaClass.name
+        className.contains("VectorDrawable") || className.contains("BitmapDrawable")
+    } catch (e: Throwable) {
+        false
     }
 }

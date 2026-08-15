@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -176,6 +177,7 @@ fun Chat(
 
         // Process initial question if passed
         LaunchedEffect(initialQuestion) {
+                viewModel.loadSessions(context, initialQuestion)
                 if (initialQuestion.isNotBlank()) {
                         viewModel.onInputTextChanged(initialQuestion)
                 }
@@ -252,6 +254,7 @@ fun ChatLandingContent(
         cameraLauncher: androidx.activity.result.ActivityResultLauncher<Void?>,
         onShowHistory: () -> Unit
 ) {
+        val context = LocalContext.current
         Column(
                 modifier =
                         Modifier.fillMaxSize()
@@ -553,7 +556,8 @@ fun ChatLandingContent(
                                                                 session = session,
                                                                 onClick = {
                                                                         viewModel.selectSession(
-                                                                                session
+                                                                                session,
+                                                                                context
                                                                         )
                                                                 }
                                                         )
@@ -572,6 +576,7 @@ fun AnswerOutputContent(
         onNavigateToQuizzes: () -> Unit,
         onBack: (() -> Unit)? = null
 ) {
+        val context = LocalContext.current
         val qaPairs =
                 remember(state.messages) {
                         val pairs = mutableListOf<Pair<ChatMessage, ChatMessage?>>()
@@ -1062,6 +1067,7 @@ fun SupportChip(text: String, onClick: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryBottomSheet(state: ChatState, viewModel: ChatViewModel, onDismiss: () -> Unit) {
+        val context = LocalContext.current
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
         ModalBottomSheet(
@@ -1102,7 +1108,7 @@ fun HistoryBottomSheet(state: ChatState, viewModel: ChatViewModel, onDismiss: ()
                                                 RecentQuestionRowItem(
                                                         session = session,
                                                         onClick = {
-                                                                viewModel.selectSession(session)
+                                                                viewModel.selectSession(session, context)
                                                                 onDismiss()
                                                         }
                                                 )

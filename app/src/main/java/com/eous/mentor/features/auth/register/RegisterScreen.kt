@@ -42,6 +42,9 @@ import io.github.jan.supabase.compose.auth.composeAuth
 import io.github.jan.supabase.compose.auth.composable.rememberSignInWithGoogle
 import io.github.jan.supabase.compose.auth.composable.NativeSignInResult
 import com.eous.mentor.di.supabase
+import io.github.jan.supabase.auth.auth
+import com.eous.mentor.core.data.repository.SavedAccountsRepository
+import com.eous.mentor.di.UseCaseProvider
 
 @Composable
 fun RegisterFormScreen(
@@ -57,9 +60,41 @@ fun RegisterFormScreen(
         onResult = { result ->
             when (result) {
                 is NativeSignInResult.Success -> {
-                    Toast.makeText(context, "Registered/Logged in with Google successfully!", Toast.LENGTH_SHORT).show()
-                    navController.navigateSafe("dashboard") {
-                        popUpTo("intro") { inclusive = true }
+                    scope.launch {
+                        val currentUid = viewModel.currentUserId()
+                        val currentEmail = com.eous.mentor.di.RepositoryProvider.sessionRepository.getCurrentUserEmail() ?: ""
+                        if (!currentUid.isNullOrEmpty()) {
+                            viewModel.issueSession(context, currentUid)
+                            val avatarUrl = UseCaseProvider.getProfile(currentUid).getOrNull()?.avatar_url
+                            SavedAccountsRepository.saveAccount(
+                                context,
+                                com.eous.mentor.domain.model.SavedAccount(
+                                    email = currentEmail,
+                                    password = "", // Google sign-in has no password
+                                    avatarUrl = avatarUrl
+                                )
+                            )
+                        }
+                        try {
+                            val (current, next) = com.eous.mentor.di.supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+                            if (current == io.github.jan.supabase.auth.mfa.AuthenticatorAssuranceLevel.AAL1 &&
+                                next == io.github.jan.supabase.auth.mfa.AuthenticatorAssuranceLevel.AAL2) {
+                                Toast.makeText(context, "MFA Verification Required", Toast.LENGTH_SHORT).show()
+                                navController.navigateSafe("mfa_verify") {
+                                    popUpTo("intro") { inclusive = true }
+                                }
+                            } else {
+                                Toast.makeText(context, "Registered/Logged in with Google successfully!", Toast.LENGTH_SHORT).show()
+                                navController.navigateSafe("dashboard") {
+                                    popUpTo("intro") { inclusive = true }
+                                }
+                            }
+                        } catch (e: Throwable) {
+                            Toast.makeText(context, "Registered/Logged in with Google successfully!", Toast.LENGTH_SHORT).show()
+                            navController.navigateSafe("dashboard") {
+                                popUpTo("intro") { inclusive = true }
+                            }
+                        }
                     }
                 }
                 is NativeSignInResult.Error -> {

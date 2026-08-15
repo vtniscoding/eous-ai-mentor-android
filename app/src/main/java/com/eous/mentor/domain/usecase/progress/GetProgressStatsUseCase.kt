@@ -16,7 +16,7 @@ class GetProgressStatsUseCase(
 
         // 1. Fetch profile first to check name
         val profileResult = userRepository.getProfile(userId)
-        val profile = profileResult.getOrThrow()
+        val profile = profileResult.getOrNull()
 
         var currentDisplayName = "Student"
         if (profile != null) {

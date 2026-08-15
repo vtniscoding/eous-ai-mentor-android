@@ -57,9 +57,41 @@ fun LoginFormScreen(
         onResult = { result ->
             when (result) {
                 is NativeSignInResult.Success -> {
-                    Toast.makeText(context, "Logged in with Google successfully!", Toast.LENGTH_SHORT).show()
-                    navController.navigateSafe("dashboard") {
-                        popUpTo("intro") { inclusive = true }
+                    scope.launch {
+                        val currentUid = viewModel.currentUserId()
+                        val currentEmail = com.eous.mentor.di.RepositoryProvider.sessionRepository.getCurrentUserEmail() ?: ""
+                        if (!currentUid.isNullOrEmpty()) {
+                            viewModel.issueSession(context, currentUid)
+                            val avatarUrl = viewModel.fetchAvatarUrl(currentUid)
+                            SavedAccountsRepository.saveAccount(
+                                context,
+                                com.eous.mentor.domain.model.SavedAccount(
+                                    email = currentEmail,
+                                    password = "", // Google sign-in has no password
+                                    avatarUrl = avatarUrl
+                                )
+                            )
+                        }
+                        try {
+                            val (current, next) = com.eous.mentor.di.supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+                            if (current == io.github.jan.supabase.auth.mfa.AuthenticatorAssuranceLevel.AAL1 &&
+                                next == io.github.jan.supabase.auth.mfa.AuthenticatorAssuranceLevel.AAL2) {
+                                Toast.makeText(context, "MFA Verification Required", Toast.LENGTH_SHORT).show()
+                                navController.navigateSafe("mfa_verify") {
+                                    popUpTo("intro") { inclusive = true }
+                                }
+                            } else {
+                                Toast.makeText(context, "Logged in with Google successfully!", Toast.LENGTH_SHORT).show()
+                                navController.navigateSafe("dashboard") {
+                                    popUpTo("intro") { inclusive = true }
+                                }
+                            }
+                        } catch (e: Throwable) {
+                            Toast.makeText(context, "Logged in with Google successfully!", Toast.LENGTH_SHORT).show()
+                            navController.navigateSafe("dashboard") {
+                                popUpTo("intro") { inclusive = true }
+                            }
+                        }
                     }
                 }
                 is NativeSignInResult.Error -> {

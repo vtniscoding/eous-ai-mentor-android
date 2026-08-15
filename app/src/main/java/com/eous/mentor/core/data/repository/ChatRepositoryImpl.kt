@@ -16,6 +16,9 @@ import kotlinx.serialization.json.Json
 class ChatRepositoryImpl : ChatRepository {
     private val json = Json { ignoreUnknownKeys = true }
 
+    private val localSessionsCache = java.util.concurrent.ConcurrentHashMap<String, List<ChatSession>>()
+    private val localMessagesCache = java.util.concurrent.ConcurrentHashMap<String, List<ChatMessage>>()
+
     // ---- Sessions ----
 
     override suspend fun getSessions(userId: String): Result<List<ChatSession>> {
@@ -27,10 +30,16 @@ class ChatRepositoryImpl : ChatRepository {
                                 order("created_at", Order.DESCENDING)
                             }
                             .decodeList<ChatSession>()
+            localSessionsCache[userId] = sessions
             Result.success(sessions)
         } catch (e: Throwable) {
             e.printStackTrace()
-            Result.failure(e)
+            val cached = localSessionsCache[userId]
+            if (cached != null) {
+                Result.success(cached)
+            } else {
+                Result.failure(e)
+            }
         }
     }
 
@@ -105,10 +114,16 @@ class ChatRepositoryImpl : ChatRepository {
                                 order("created_at", Order.ASCENDING)
                             }
                             .decodeList<ChatMessage>()
+            localMessagesCache[sessionId] = messages
             Result.success(messages)
         } catch (e: Throwable) {
             e.printStackTrace()
-            Result.failure(e)
+            val cached = localMessagesCache[sessionId]
+            if (cached != null) {
+                Result.success(cached)
+            } else {
+                Result.failure(e)
+            }
         }
     }
 
@@ -119,6 +134,11 @@ class ChatRepositoryImpl : ChatRepository {
                             .insert(message) { select() }
                             .decodeSingle<ChatMessage>()
 
+            val sessionId = message.session_id ?: saved.session_id
+            if (!sessionId.isNullOrEmpty()) {
+                val currentList = localMessagesCache[sessionId] ?: emptyList()
+                localMessagesCache[sessionId] = currentList + saved
+            }
             Result.success(saved)
         } catch (e: Throwable) {
             e.printStackTrace()
